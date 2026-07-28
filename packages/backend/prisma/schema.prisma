@@ -1,0 +1,242 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  name          String
+  phone         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  watchlists    Watchlist[]
+  portfolios    Portfolio[]
+  trades        Trade[]
+  alerts        Alert[]
+  strategies    Strategy[]
+  chatSessions  ChatSession[]
+  paperWallet   PaperWallet?
+  riskProfile   RiskProfile?
+}
+
+model Watchlist {
+  id        String   @id @default(cuid())
+  name      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  symbols   WatchlistSymbol[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WatchlistSymbol {
+  id          String    @id @default(cuid())
+  watchlistId String
+  watchlist   Watchlist @relation(fields: [watchlistId], references: [id])
+  symbol      String
+  addedAt     DateTime  @default(now())
+  @@unique([watchlistId, symbol])
+}
+
+model Alert {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  symbol    String
+  type      AlertType
+  value     Float
+  triggered Boolean  @default(false)
+  message   String?
+  createdAt DateTime @default(now())
+  triggeredAt DateTime?
+}
+
+enum AlertType {
+  PRICE_ABOVE
+  PRICE_BELOW
+  PERCENT_UP
+  PERCENT_DOWN
+  FIFTY_TWO_WEEK_HIGH
+  FIFTY_TWO_WEEK_LOW
+  RSI_OVERBOUGHT
+  RSI_OVERSOLD
+}
+
+model Portfolio {
+  id        String   @id @default(cuid())
+  name      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  holdings  Holding[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Holding {
+  id           String    @id @default(cuid())
+  portfolioId  String
+  portfolio    Portfolio @relation(fields: [portfolioId], references: [id])
+  symbol       String
+  quantity     Int
+  avgPrice     Float
+  currentPrice Float
+  sector       String?
+  assetClass   String?
+  buyDate      DateTime
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Trade {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  symbol    String
+  type      TradeType
+  quantity  Int
+  price     Float
+  total     Float
+  status    TradeStatus @default(EXECUTED)
+  strategy  String?
+  notes     String?
+  createdAt DateTime  @default(now())
+}
+
+enum TradeType {
+  BUY
+  SELL
+}
+
+enum TradeStatus {
+  PENDING
+  EXECUTED
+  CANCELLED
+  REJECTED
+}
+
+model Strategy {
+  id              String           @id @default(cuid())
+  userId          String
+  user            User             @relation(fields: [userId], references: [id])
+  name            String
+  description     String?
+  rules           Json
+  riskAppetite    RiskAppetite
+  status          StrategyStatus   @default(DRAFT)
+  backtestRuns    BacktestResult[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+enum RiskAppetite {
+  CONSERVATIVE
+  MODERATE
+  AGGRESSIVE
+}
+
+enum StrategyStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+model ChatSession {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      ChatType
+  messages  ChatMessage[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum ChatType {
+  AI_ADVISOR
+  RESEARCH
+  TRADE_COACH
+}
+
+model ChatMessage {
+  id        String      @id @default(cuid())
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id])
+  role      MessageRole
+  content   String
+  sources   Json?
+  createdAt DateTime    @default(now())
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+model NewsItem {
+  id          String   @id @default(cuid())
+  title       String
+  content     String?
+  source      String
+  url         String
+  sentiment   Float?
+  sentimentLabel String?
+  symbols     String[]
+  publishedAt DateTime
+  createdAt   DateTime @default(now())
+}
+
+model PaperWallet {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  balance   Float    @default(1000000)
+  positions PaperPosition[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PaperPosition {
+  id         String      @id @default(cuid())
+  walletId   String
+  wallet     PaperWallet @relation(fields: [walletId], references: [id])
+  symbol     String
+  quantity   Int
+  avgPrice   Float
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model RiskProfile {
+  id              String @id @default(cuid())
+  userId          String @unique
+  user            User   @relation(fields: [userId], references: [id])
+  riskAppetite    RiskAppetite
+  investmentHorizon Int?
+  monthlyIncome   Float?
+  riskToleranceScore Int?
+  goals           Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model BacktestResult {
+  id          String   @id @default(cuid())
+  strategyId  String
+  strategy    Strategy @relation(fields: [strategyId], references: [id])
+  startDate   DateTime
+  endDate     DateTime
+  totalReturn Float
+  sharpeRatio Float?
+  maxDrawdown Float?
+  winRate     Float?
+  trades      Json
+  equityCurve Json
+  createdAt   DateTime @default(now())
+}

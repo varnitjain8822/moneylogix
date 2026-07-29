@@ -88,12 +88,15 @@ Instead of a simple linear document generator, this workflow uses a sophisticate
 
 ### 3. Review Generated Files
 
+**Note**: The components generated are *not* hardcoded. The AI dynamically analyzes your project description (JSON/PDF/TXT) and determines the appropriate microservices, modules, or layers to create.
+
+*Example of AI-determined output:*
 ```text
 output/
 ├── 00-project-brief.md          # System overview (aggregated)
 ├── INDEX.md                     # Cross-component index
 ├── components/
-│   ├── auth-service/                   # Complete SDLC docs for Auth
+│   ├── <ai-determined-component-1>/    # E.g., Auth Service
 │   │   ├── 00-project-brief.md
 │   │   ├── 01-requirement-analysis.md
 │   │   ├── 02-prd.md
@@ -104,10 +107,9 @@ output/
 │   │   ├── 07-code-review.md
 │   │   ├── 08-qa-testing.md
 │   │   └── 09-ui-ux-design.md
-│   ├── frontend-web/                   # SDLC docs for Frontend
-│   ├── backend-api/                    # SDLC docs for Backend API
-│   ├── database-layer/                 # SDLC docs for Database
-│   └── mobile-app/                     # SDLC docs for Mobile App
+│   ├── <ai-determined-component-2>/    # E.g., Backend API
+│   ├── <ai-determined-component-3>/    # E.g., Frontend Web
+│   └── ...                             # Other AI-detected services
 ```
 
 ---

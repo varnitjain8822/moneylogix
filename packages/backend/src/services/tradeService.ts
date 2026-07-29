@@ -1,6 +1,68 @@
 import prisma from '../config/prisma';
 import { getStockPrice } from './marketData';
 
+const SECTOR_MAP: Record<string, string> = {
+  RELIANCE: 'Energy', TCS: 'IT', HDFCBANK: 'Banking', INFY: 'IT',
+  ICICIBANK: 'Banking', SBIN: 'Banking', ITC: 'Consumer', BHARTIARTL: 'Telecom',
+  KOTAKBANK: 'Banking', LT: 'Infrastructure', WIPRO: 'IT', TATAMOTORS: 'Automotive',
+  SUNPHARMA: 'Healthcare', MARUTI: 'Automotive', AXISBANK: 'Banking',
+};
+
+async function getDefaultPortfolio(userId: string) {
+  let portfolio = await prisma.portfolio.findFirst({ where: { userId } });
+  if (!portfolio) {
+    portfolio = await prisma.portfolio.create({
+      data: { userId, name: 'Default Portfolio' },
+    });
+  }
+  return portfolio;
+}
+
+const upsertPortfolioHolding = async (userId: string, symbol: string, quantity: number, avgPrice: number) => {
+  const portfolio = await getDefaultPortfolio(userId);
+  const sector = SECTOR_MAP[symbol] || 'Trading';
+  const existingHolding = await prisma.holding.findFirst({
+    where: { portfolioId: portfolio.id, symbol },
+  });
+  if (existingHolding) {
+    const newQty = existingHolding.quantity + quantity;
+    const newAvg = ((existingHolding.quantity * existingHolding.avgPrice) + (quantity * avgPrice)) / newQty;
+    await prisma.holding.update({
+      where: { id: existingHolding.id },
+      data: { quantity: newQty, avgPrice: newAvg, currentPrice: avgPrice },
+    });
+  } else {
+    await prisma.holding.create({
+      data: {
+        portfolioId: portfolio.id,
+        symbol, quantity, avgPrice,
+        currentPrice: avgPrice,
+        sector,
+        assetClass: 'Equity',
+        buyDate: new Date(),
+      },
+    });
+  }
+};
+
+const reducePortfolioHolding = async (userId: string, symbol: string, quantity: number) => {
+  const portfolio = await prisma.portfolio.findFirst({ where: { userId } });
+  if (!portfolio) return;
+  const existingHolding = await prisma.holding.findFirst({
+    where: { portfolioId: portfolio.id, symbol },
+  });
+  if (!existingHolding) return;
+  const newQty = existingHolding.quantity - quantity;
+  if (newQty <= 0) {
+    await prisma.holding.delete({ where: { id: existingHolding.id } });
+  } else {
+    await prisma.holding.update({
+      where: { id: existingHolding.id },
+      data: { quantity: newQty },
+    });
+  }
+};
+
 export const executeTrade = async (userId: string, data: {
   symbol: string;
   type: 'BUY' | 'SELL';
@@ -10,7 +72,8 @@ export const executeTrade = async (userId: string, data: {
   notes?: string;
 }) => {
   const total = data.quantity * data.price;
-  
+  const symbol = data.symbol.toUpperCase();
+
   // Update paper wallet if paper trading
   const paperWallet = await prisma.paperWallet.findUnique({ where: { userId } });
   if (paperWallet) {
@@ -23,9 +86,8 @@ export const executeTrade = async (userId: string, data: {
         data: { balance: paperWallet.balance - total },
       });
 
-      // Update or create paper position
       const existingPosition = await prisma.paperPosition.findFirst({
-        where: { walletId: paperWallet.id, symbol: data.symbol },
+        where: { walletId: paperWallet.id, symbol },
       });
 
       if (existingPosition) {
@@ -37,13 +99,12 @@ export const executeTrade = async (userId: string, data: {
         });
       } else {
         await prisma.paperPosition.create({
-          data: { walletId: paperWallet.id, symbol: data.symbol, quantity: data.quantity, avgPrice: data.price },
+          data: { walletId: paperWallet.id, symbol, quantity: data.quantity, avgPrice: data.price },
         });
       }
     } else {
-      // SELL
       const existingPosition = await prisma.paperPosition.findFirst({
-        where: { walletId: paperWallet.id, symbol: data.symbol },
+        where: { walletId: paperWallet.id, symbol },
       });
 
       if (!existingPosition || existingPosition.quantity < data.quantity) {
@@ -67,10 +128,16 @@ export const executeTrade = async (userId: string, data: {
     }
   }
 
+  if (data.type === 'BUY') {
+    await upsertPortfolioHolding(userId, symbol, data.quantity, data.price);
+  } else {
+    await reducePortfolioHolding(userId, symbol, data.quantity);
+  }
+
   return prisma.trade.create({
     data: {
       userId,
-      symbol: data.symbol.toUpperCase(),
+      symbol,
       type: data.type,
       quantity: data.quantity,
       price: data.price,

@@ -4,7 +4,7 @@ import api from '../services/api';
 import { Stock } from '../types';
 import {
   TrendingUp, TrendingDown, Activity, Bot, BarChart3, Gamepad2,
-  Newspaper, Search, Network, ArrowUpRight, Zap, Shield,
+  Newspaper, Search, Network, ArrowUpRight, Zap, Shield, Clock,
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -31,6 +31,8 @@ export default function Dashboard() {
     { title: 'Trade Analyzer', desc: 'Analyze your behavior', icon: BarChart3, path: '/trade-analyzer', gradient: 'from-orange-500 to-amber-500', shadow: 'shadow-orange-500/10' },
     { title: 'Strategy Builder', desc: 'Risk-based recommendations', icon: Network, path: '/strategy-builder', gradient: 'from-cyan-500 to-blue-500', shadow: 'shadow-cyan-500/10' },
     { title: 'Paper Trading', desc: 'Practice risk-free', icon: Gamepad2, path: '/paper-trading', gradient: 'from-yellow-500 to-orange-500', shadow: 'shadow-yellow-500/10' },
+    { title: 'Performance', desc: 'Analytics & insights', icon: TrendingUp, path: '/performance', gradient: 'from-emerald-500 to-teal-500', shadow: 'shadow-emerald-500/10' },
+    { title: 'Trade History', desc: 'Full trade log & exports', icon: Clock, path: '/trade-history', gradient: 'from-indigo-500 to-purple-500', shadow: 'shadow-indigo-500/10' },
     { title: 'News Feed', desc: 'Market sentiment analysis', icon: Newspaper, path: '/news', gradient: 'from-rose-500 to-pink-500', shadow: 'shadow-rose-500/10' },
     { title: 'Research', desc: 'AI-powered stock Q&A', icon: Search, path: '/research', gradient: 'from-teal-500 to-green-500', shadow: 'shadow-teal-500/10' },
     { title: 'Backtesting', desc: 'Test strategies historically', icon: Zap, path: '/backtesting', gradient: 'from-indigo-500 to-purple-500', shadow: 'shadow-indigo-500/10' },

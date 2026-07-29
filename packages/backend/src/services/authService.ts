@@ -13,6 +13,11 @@ export const register = async (email: string, password: string, name: string) =>
     data: { email, password: hashedPassword, name },
   });
 
+  // Create default portfolio
+  await prisma.portfolio.create({
+    data: { userId: user.id, name: 'Default Portfolio' },
+  });
+
   // Create default paper wallet
   await prisma.paperWallet.create({
     data: { userId: user.id, balance: 1000000 },

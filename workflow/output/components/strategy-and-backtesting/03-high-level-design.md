@@ -1,11 +1,11 @@
-# MoneyLogix - High Level Design (HLD)
+# MoneyLogix - Strategy {{PROJECT_NAME}} Backtesting - High Level Design (HLD)
 
 ## Document Information
 | Field | Value |
 |-------|-------|
-| Project | MoneyLogix |
+| Project | MoneyLogix - Strategy {{PROJECT_NAME}} Backtesting |
 | Version | 1.0 |
-| Date | 2026-07-28 |
+| Date | 2026-07-29 |
 | Author | Development Team |
 | Status | Draft |
 | Reviewers | {{REVIEWERS}} |
@@ -461,4 +461,4 @@ retry_policy:
 
 ---
 
-*Document Version: 1.0 | Last Updated: 2026-07-28*
+*Document Version: 1.0 | Last Updated: 2026-07-29*

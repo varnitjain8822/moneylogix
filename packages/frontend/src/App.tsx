@@ -15,6 +15,9 @@ import Research from './pages/Research';
 import News from './pages/News';
 import PaperTrading from './pages/PaperTrading';
 import Backtesting from './pages/Backtesting';
+import StockDetail from './pages/StockDetail';
+import PerformanceDashboard from './pages/PerformanceDashboard';
+import TradeHistory from './pages/TradeHistory';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token } = useAuthStore();
@@ -47,6 +50,9 @@ function App() {
           <Route path="research" element={<Research />} />
           <Route path="news" element={<News />} />
           <Route path="paper-trading" element={<PaperTrading />} />
+          <Route path="stock/:symbol" element={<StockDetail />} />
+          <Route path="performance" element={<PerformanceDashboard />} />
+          <Route path="trade-history" element={<TradeHistory />} />
           <Route path="backtesting" element={<Backtesting />} />
         </Route>
       </Routes>

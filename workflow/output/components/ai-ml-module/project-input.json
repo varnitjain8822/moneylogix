@@ -1,0 +1,56 @@
+{
+  "projectName": "MoneyLogix - AI/ML Module",
+  "projectType": "System Component",
+  "description": "AI/ML Module for MoneyLogix",
+  "targetUsers": [
+    "Beginner traders learning the stock market",
+    "Intermediate traders wanting AI-powered insights",
+    "Paper traders practicing without real money"
+  ],
+  "techStack": {
+    "frontend": [
+      "React 18",
+      "TypeScript",
+      "Vite",
+      "TailwindCSS",
+      "Recharts",
+      "Zustand"
+    ],
+    "backend": [
+      "Node.js",
+      "Express",
+      "TypeScript",
+      "Prisma ORM",
+      "PostgreSQL",
+      "Socket.IO"
+    ],
+    "ai": [
+      "Sarvam AI (Sarvam-30B)",
+      "Multi-Agent System",
+      "Emotional Analysis Engine"
+    ],
+    "devops": [
+      "Docker",
+      "WebSocket",
+      "REST API"
+    ]
+  },
+  "coreFeatures": [
+    "AI-powered emotional trading advisor using Sarvam AI"
+  ],
+  "constraints": {
+    "timeline": "48 hours (hackathon)",
+    "teamSize": "1-2 developers",
+    "budget": "Free tier APIs and services",
+    "dataSources": "Simulated Indian stock market data"
+  },
+  "nonFunctionalRequirements": {
+    "performance": "Page load < 2s, API response < 500ms",
+    "scalability": "Support 100 concurrent users",
+    "security": "JWT authentication, input validation, rate limiting",
+    "usability": "Responsive design, intuitive navigation, real-time feedback",
+    "availability": "99.9% uptime during demo"
+  },
+  "parentProject": "MoneyLogix",
+  "componentName": "AI/ML Module"
+}

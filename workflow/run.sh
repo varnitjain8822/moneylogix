@@ -1,204 +1,457 @@
 #!/bin/bash
 
 # ============================================================================
-# PROJECT WORKFLOW ORCHESTRATOR
+# PROJECT WORKFLOW ORCHESTRATOR v2.0
 # ============================================================================
-# Generates detailed SDLC documentation from project-input.json
-# Interactive mode: pauses after each stage for user review
+# Supports PDF, TXT, and JSON input. Decomposes large projects into
+# components and generates full SDLC docs (PRD, HLD, LLD, etc.) per component.
 # ============================================================================
 
 set -e
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-MAGENTA='\033[0;35m'
-BOLD='\033[1m'
-DIM='\033[2m'
-NC='\033[0m' # No Color
+# Colors
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
+BLUE='\033[0;34m'; CYAN='\033[0;36m'; MAGENTA='\033[0;35m'
+BOLD='\033[1m'; DIM='\033[2m'; NC='\033[0m'
 
-# Script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INPUT_FILE="$SCRIPT_DIR/project-input.json"
 STAGES_DIR="$SCRIPT_DIR/stages"
 OUTPUT_DIR="$SCRIPT_DIR/output"
-
-# Track mode
 INTERACTIVE=true
+COMPONENT_MODE=false
 
 # ============================================================================
-# Helper Functions
+# Helpers
 # ============================================================================
 
 print_header() {
     echo ""
     echo -e "${CYAN}╔══════════════════════════════════════════════════════════════════╗${NC}"
     echo -e "${CYAN}║                                                                  ║${NC}"
-    echo -e "${CYAN}║           ${BOLD}📋 PROJECT WORKFLOW ORCHESTRATOR${NC}${CYAN}                      ║${NC}"
-    echo -e "${CYAN}║           ${DIM}Generating SDLC Documentation${NC}${CYAN}                         ║${NC}"
+    echo -e "${CYAN}║        ${BOLD}📋 PROJECT WORKFLOW ORCHESTRATOR v2${NC}${CYAN}                    ║${NC}"
+    echo -e "${CYAN}║        ${DIM}Multi-Component SDLC Documentation Generator${NC}${CYAN}           ║${NC}"
     echo -e "${CYAN}║                                                                  ║${NC}"
     echo -e "${CYAN}╚══════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 }
 
-print_stage_header() {
-    local stage_num=$1
-    local stage_name=$2
-    local stage_icon=$3
-    echo ""
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${YELLOW}${BOLD}  $stage_icon Stage $stage_num: $stage_name${NC}"
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+print_stage_header() { local n=$1; local name=$2; local icon=$3
+    echo ""; echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${YELLOW}${BOLD}  $icon Stage $n: $name${NC}"
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 }
 
-print_success() {
-    echo -e "${GREEN}  ✓ $1${NC}"
-}
-
-print_error() {
-    echo -e "${RED}  ✗ $1${NC}"
-}
-
-print_info() {
-    echo -e "${CYAN}  ℹ $1${NC}"
-}
+print_success() { echo -e "${GREEN}  ✓ $1${NC}"; }
+print_error()   { echo -e "${RED}  ✗ $1${NC}"; }
+print_info()    { echo -e "${CYAN}  ℹ $1${NC}"; }
+print_warn()    { echo -e "${YELLOW}  ⚠ $1${NC}"; }
 
 print_file_info() {
     local file=$1
-    local size=$(wc -c < "$file" | tr -d ' ')
-    local lines=$(wc -l < "$file" | tr -d ' ')
-    echo -e "${DIM}    📄 $file${NC}"
-    echo -e "${DIM}       Size: ${size} bytes | Lines: ${lines}${NC}"
+    if [ -f "$file" ]; then
+        local size=$(wc -c < "$file" | tr -d ' ')
+        local lines=$(wc -l < "$file" | tr -d ' ')
+        echo -e "${DIM}    📄 $file${NC}"
+        echo -e "${DIM}       Size: ${size} bytes | Lines: ${lines}${NC}"
+    fi
 }
 
 wait_for_user() {
-    local file_path=$1
-    local stage_num=$2
-
+    local file_path=$1; local stage_num=$2; local component=$3
     if [ "$INTERACTIVE" = true ]; then
+        local comp_label="${component:+ (${component})}"
         echo ""
-        echo -e "${MAGENTA}┌──────────────────────────────────────────────────────────────────┐${NC}"
-        echo -e "${MAGENTA}│${NC}  ${BOLD}📄 REVIEW THIS FILE:${NC}"
-        echo -e "${MAGENTA}│${NC}"
+        echo -e "${MAGENTA}┌──────────────────────────────────────────────────────────────┐${NC}"
+        echo -e "${MAGENTA}│${NC}  ${BOLD}📄 REVIEW THIS FILE${comp_label}:${NC}"
         echo -e "${MAGENTA}│${NC}  ${CYAN}$file_path${NC}"
         echo -e "${MAGENTA}│${NC}"
-        echo -e "${MAGENTA}│${NC}  ${DIM}Open in your editor or run:${NC}"
-        echo -e "${MAGENTA}│${NC}  ${DIM}cat $file_path${NC}"
+        echo -e "${MAGENTA}│${NC}  ${DIM}Open in editor or run: cat $file_path${NC}"
         echo -e "${MAGENTA}│${NC}"
-        echo -e "${MAGENTA}│${NC}  ${GREEN}Press [Enter]${NC} to continue to next stage"
-        echo -e "${MAGENTA}│${NC}  ${RED}Press [q]${NC}    to quit and review later"
+        echo -e "${MAGENTA}│${NC}  ${GREEN}Press [Enter]${NC} to continue"
+        echo -e "${MAGENTA}│${NC}  ${RED}Press [q]${NC}    to quit"
         echo -e "${MAGENTA}│${NC}"
-        echo -e "${MAGENTA}└──────────────────────────────────────────────────────────────────┘${NC}"
+        echo -e "${MAGENTA}└──────────────────────────────────────────────────────────────┘${NC}"
         echo ""
-
         read -r -p "  ➤ " user_input </dev/tty
-
         if [[ "$user_input" == "q" || "$user_input" == "Q" ]]; then
-            echo ""
-            echo -e "${YELLOW}  ⏸  Workflow paused at Stage $stage_num${NC}"
-            echo -e "${YELLOW}  📁 Generated files are in: $OUTPUT_DIR${NC}"
-            echo -e "${YELLOW}  ▶  Resume later with: ./run.sh range $((stage_num + 1)) 8${NC}"
-            echo ""
-            exit 0
+            echo ""; echo -e "${YELLOW}  ⏸ Paused at Stage $stage_num${NC}"; exit 0
         fi
     fi
 }
 
 # ============================================================================
-# Input Validation
+# Input Detection & Parsing
 # ============================================================================
 
-validate_input() {
-    if [ ! -f "$INPUT_FILE" ]; then
-        print_error "project-input.json not found!"
-        echo "  Please create project-input.json with your project details."
-        echo "  See README.md for the required format."
+detect_input_type() {
+    local file=$1
+    if [ ! -f "$file" ]; then
+        print_error "File not found: $file"
         exit 1
     fi
+    local mime=$(file --mime-type -b "$file" 2>/dev/null | tr '[:upper:]' '[:lower:]')
+    local ext="${file##*.}"
+    case "$ext" in
+        json) echo "json" ;;
+        pdf)  echo "pdf" ;;
+        txt|md|text) echo "text" ;;
+        *)
+            case "$mime" in
+                application/pdf|application/x-pdf) echo "pdf" ;;
+                text/plain|text/markdown) echo "text" ;;
+                application/json) echo "json" ;;
+                *) echo "unknown" ;;
+            esac
+            ;;
+    esac
+}
 
-    # Check if jq is installed
-    if ! command -v jq &> /dev/null; then
-        print_error "jq is required but not installed."
-        echo "  Install with: brew install jq"
-        exit 1
+read_input_json() {
+    local file=$1
+    cp "$file" "$INPUT_FILE"
+    print_success "Loaded JSON input: $file"
+}
+
+read_input_text() {
+    local file=$1
+    print_info "Converting text input to structured JSON..."
+    local content=$(cat "$file")
+    local project_name=$(basename "$file" | sed 's/\.[^.]*$//')
+    project_name=$(echo "$project_name" | sed 's/[-_]/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2)}1')
+
+    # Try AI-powered extraction via python if available
+    python3 -c "
+import json, sys, re
+content = open('$file').read()
+name = '$project_name'
+
+# Heuristic extraction
+desc = content.strip()[:500] if len(content) > 500 else content.strip()
+
+# Extract features by looking for bullet points, numbered lists, or section keywords
+features = []
+lines = content.split('\n')
+for line in lines:
+    stripped = line.strip()
+    if re.match(r'^[\-\*•]\s+', stripped):
+        features.append(re.sub(r'^[\-\*•]\s+', '', stripped))
+    elif re.match(r'^\d+[.\)]\s+', stripped):
+        features.append(re.sub(r'^\d+[.\)]\s+', '', stripped))
+
+if not features:
+    # Fallback: break content into sentences as features
+    sentences = re.split(r'[.!?\n]+', desc)
+    features = [s.strip() for s in sentences if len(s.strip()) > 20][:10]
+
+# Extract tech stack keywords
+tech_keywords = ['react', 'angular', 'vue', 'node', 'python', 'java', 'go', 'rust',
+                 'typescript', 'javascript', 'postgresql', 'mysql', 'mongodb', 'redis',
+                 'docker', 'kubernetes', 'aws', 'gcp', 'azure', 'tensorflow', 'pytorch',
+                 'flask', 'django', 'express', 'spring', 'fastapi', 'graphql', 'rest']
+tech_found = [t for t in tech_keywords if t.lower() in content.lower()]
+
+output = {
+    'projectName': name,
+    'projectType': 'Software Application',
+    'description': desc,
+    'rawContent': content,
+    'targetUsers': ['End Users'],
+    'techStack': {'primary': tech_found[:5] if tech_found else ['To be determined']},
+    'coreFeatures': features[:15] if features else ['See project description'],
+    'constraints': {
+        'timeline': 'To be determined',
+        'teamSize': 'To be determined',
+        'budget': 'To be determined'
+    },
+    'nonFunctionalRequirements': {
+        'performance': 'See requirement analysis'
+    }
+}
+with open('$INPUT_FILE', 'w') as f:
+    json.dump(output, f, indent=2)
+print('extracted')
+" 2>/dev/null || {
+        # Fallback: basic extraction without python
+        cat > "$INPUT_FILE" << EOJSON
+{
+  "projectName": "$project_name",
+  "projectType": "Software Application",
+  "description": "Project imported from text file",
+  "targetUsers": ["End Users"],
+  "techStack": {"primary": ["To be determined"]},
+  "coreFeatures": ["See detailed project description"],
+  "constraints": {"timeline": "TBD", "teamSize": "TBD", "budget": "TBD"},
+  "nonFunctionalRequirements": {"performance": "TBD"}
+}
+EOJSON
+    }
+    print_success "Text input converted to structured JSON"
+}
+
+read_input_pdf() {
+    local file=$1
+    local txt_file="${file%.pdf}.txt"
+
+    # Try pdftotext first
+    if command -v pdftotext &>/dev/null; then
+        pdftotext "$file" "$txt_file" 2>/dev/null
+        print_success "PDF extracted to text via pdftotext"
+    elif command -v python3 &>/dev/null; then
+        # Fallback: use Python PyMuPDF or pdfminer
+        python3 -c "
+import sys
+try:
+    import fitz  # PyMuPDF
+    doc = fitz.open('$file')
+    text = ''
+    for page in doc:
+        text += page.get_text()
+    open('$txt_file', 'w').write(text)
+    print('extracted')
+except ImportError:
+    try:
+        from pdfminer.high_level import extract_text
+        text = extract_text('$file')
+        open('$txt_file', 'w').write(text)
+        print('extracted')
+    except ImportError:
+        print('no-lib')
+        sys.exit(1)
+" 2>/dev/null && print_success "PDF extracted via Python" || {
+            print_warn "No PDF library found. Install: pip install PyMuPDF or brew install poppler"
+            print_warn "Using file as-is (may not be readable)"
+            cp "$file" "$txt_file" 2>/dev/null || true
+        }
+    else
+        print_warn "No PDF extraction tool available"
+        print_warn "Install: brew install poppler (macOS) or apt-get install poppler-utils (Linux)"
+        cp "$file" "$txt_file" 2>/dev/null || true
     fi
 
-    # Validate JSON
-    if ! jq empty "$INPUT_FILE" 2>/dev/null; then
-        print_error "Invalid JSON in project-input.json"
-        echo "  Check JSON syntax and try again."
+    if [ -f "$txt_file" ] && [ -s "$txt_file" ]; then
+        read_input_text "$txt_file"
+    else
+        print_error "Could not extract text from PDF"
         exit 1
     fi
-
-    # Check required fields
-    local project_name=$(jq -r '.projectName // empty' "$INPUT_FILE")
-    local description=$(jq -r '.description // empty' "$INPUT_FILE")
-
-    if [ -z "$project_name" ]; then
-        print_error "Missing required field: projectName"
-        exit 1
-    fi
-
-    if [ -z "$description" ]; then
-        print_error "Missing required field: description"
-        exit 1
-    fi
-
-    print_success "Input file validated"
 }
 
 # ============================================================================
-# Variable Extraction
+# Component Decomposition
 # ============================================================================
 
-extract_variables() {
-    PROJECT_NAME=$(jq -r '.projectName' "$INPUT_FILE")
-    PROJECT_TYPE=$(jq -r '.projectType // "Software Application"' "$INPUT_FILE")
-    DESCRIPTION=$(jq -r '.description' "$INPUT_FILE")
-    DATE=$(date +"%Y-%m-%d")
-    AUTHOR=$(jq -r '.author // "Development Team"' "$INPUT_FILE")
-    TIMELINE=$(jq -r '.constraints.timeline // "4 weeks"' "$INPUT_FILE")
-    TEAM_SIZE=$(jq -r '.constraints.teamSize // "3 developers"' "$INPUT_FILE")
-    TARGET_USERS=$(jq -r '.targetUsers | join(", ")' "$INPUT_FILE")
-
-    echo -e "${BOLD}  Project:${NC}     $PROJECT_NAME"
-    echo -e "${BOLD}  Type:${NC}        $PROJECT_TYPE"
-    echo -e "${BOLD}  Timeline:${NC}    $TIMELINE"
-    echo -e "${BOLD}  Team:${NC}        $TEAM_SIZE"
+decompose_components() {
+    local json_file=$1
+    print_stage_header "0" "Component Decomposition" "🧩"
     echo ""
+
+    # Try AI/ML-based decomposition via python first
+    if command -v python3 &>/dev/null; then
+        local result=$(python3 -c "
+import json, sys, re
+
+with open('$json_file') as f:
+    data = json.load(f)
+
+project_name = data.get('projectName', 'Project')
+description = data.get('description', '')
+core_features = data.get('coreFeatures', [])
+raw_content = data.get('rawContent', '')
+
+# Combine all content for analysis
+full_text = description + '\\n'.join(core_features) + raw_content
+
+# Component indicators
+component_patterns = [
+    (r'(?i)(backend|server|api|service)\s*(layer|module|component)?', 'Backend/API Layer'),
+    (r'(?i)(frontend|client|ui|web\s*app)\s*(layer|module|component)?', 'Frontend/UI Layer'),
+    (r'(?i)(database|data\s*store|storage|cache)\s*(layer|module|component)?', 'Database Layer'),
+    (r'(?i)(auth|login|user\s*management|security)\s*(module|system|component)?', 'Auth & User Management'),
+    (r'(?i)(ai|ml|machine\s*learning|intelligence)\s*(module|agent|component)?', 'AI/ML Module'),
+    (r'(?i)(analytics|reporting|dashboard|visualization)\s*(module|component)?', 'Analytics & Reporting'),
+    (r'(?i)(notification|alert|messaging|email)\s*(module|system|component)?', 'Notifications Module'),
+    (r'(?i)(payment|billing|subscription)\s*(module|system|component)?', 'Payment & Billing'),
+    (r'(?i)(search|index|catalog)\s*(module|component)?', 'Search Module'),
+    (r'(?i)(admin|management|control\s*panel)\s*(panel|module|component)?', 'Admin Panel'),
+    (r'(?i)(real.?time|websocket|streaming|live)\s*(module|component)?', 'Real-time Services'),
+    (r'(?i)(paper\s*trading|simulation|virtual)\s*(engine|module|component)?', 'Paper Trading Engine'),
+    (r'(?i)(market|stock|trading|exchange)\s*(data|feed|module|component)?', 'Market Data Module'),
+    (r'(?i)(portfolio|holding|position|wallet)\s*(module|component)?', 'Portfolio & Wallet'),
+    (r'(?i)(strategy|backtest|backtesting)\s*(engine|module|component)?', 'Strategy & Backtesting'),
+    (r'(?i)(chat|conversation|copilot|assistant)\s*(module|component|system)?', 'Chat/AI Assistant'),
+    (r'(?i)(news|sentiment|feed)\s*(module|aggregator|component)?', 'News & Sentiment'),
+]
+
+# Check for section headers in raw content that indicate components
+section_components = []
+if raw_content:
+    # Look for markdown headings that suggest components
+    headings = re.findall(r'^#{1,3}\s+(.+)$', raw_content, re.MULTILINE)
+    for h in headings:
+        for pattern, comp_name in component_patterns:
+            if re.search(pattern, h):
+                if comp_name not in section_components:
+                    section_components.append(comp_name)
+
+# Check features for component hints
+feature_components = []
+for feature in core_features:
+    for pattern, comp_name in component_patterns:
+        if re.search(pattern, feature):
+            if comp_name not in feature_components:
+                feature_components.append(comp_name)
+
+# Check description
+desc_components = []
+for pattern, comp_name in component_patterns:
+    if re.search(pattern, full_text):
+        if comp_name not in desc_components:
+            desc_components.append(comp_name)
+
+# Merge all detection results
+all_detected = desc_components + [c for c in section_components if c not in desc_components] + [c for c in feature_components if c not in desc_components]
+
+# If nothing detected, create generic components based on feature count
+if len(all_detected) < 2 and len(core_features) > 3:
+    # Group features into logical components
+    n_groups = min(4, len(core_features))
+    group_size = max(1, len(core_features) // n_groups)
+    all_detected = []
+    for i in range(n_groups):
+        start = i * group_size
+        end = start + group_size if i < n_groups - 1 else len(core_features)
+        group_features = core_features[start:end]
+        all_detected.append(f'Module {i+1}: {\" / \".join(group_features[:2])}')
+
+# Build component manifests
+components = []
+for i, comp_name in enumerate(all_detected[:8]):  # max 8 components
+    comp_id = comp_name.lower().replace(' ', '-').replace('/', '-').replace('&', 'and')
+    comp_id = re.sub(r'[^a-z0-9-]', '', comp_id)
+
+    # Find related features for this component
+    related_features = []
+    for pattern, _ in component_patterns:
+        if re.search(pattern, comp_name):
+            for feat in core_features:
+                if re.search(pattern, feat) and feat not in related_features:
+                    related_features.append(feat)
+            break
+    if not related_features:
+        # Assign remaining features proportionally
+        start_idx = i * max(1, len(core_features) // max(1, len(all_detected)))
+        end_idx = min(len(core_features), start_idx + max(1, len(core_features) // max(1, len(all_detected))))
+        related_features = core_features[start_idx:end_idx]
+
+    components.append({
+        'id': comp_id,
+        'name': comp_name,
+        'description': f'{comp_name} for {project_name}',
+        'features': related_features[:8] or [f'{comp_name} functionality']
+    })
+
+# If still no components, create a single default
+if not components:
+    components.append({
+        'id': project_name.lower().replace(' ', '-'),
+        'name': project_name,
+        'description': description[:300],
+        'features': core_features or ['Core functionality']
+    })
+
+print(json.dumps(components, indent=2))
+")
+        echo "$result" > /tmp/moneylogix-components.json
+        local comp_count=$(echo "$result" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))" 2>/dev/null || echo "0")
+        if [ "$comp_count" -gt 0 ]; then
+            print_success "AI detected $comp_count components from input"
+            if [ "$comp_count" -gt 1 ]; then
+                COMPONENT_MODE=true
+            fi
+            return 0
+        fi
+    fi
+
+    # Fallback: user-guided component definition
+    COMPONENT_MODE=false
+    print_warn "Could not auto-detect components"
+    echo ""
+    echo -e "  ${BOLD}Would you like to manually define components?${NC}"
+    echo -e "  ${DIM}(If no, the workflow will run for the entire project as one component)${NC}"
+    echo ""
+    read -r -p "  Define components? (y/N): " define_comps </dev/tty
+    if [[ "$define_comps" == "y" || "$define_comps" == "Y" ]]; then
+        COMPONENT_MODE=true
+        echo "[]" > /tmp/moneylogix-components.json
+        echo ""
+        echo -e "  ${BOLD}Enter component names, one per line. Empty line to finish.${NC}"
+        echo -e "  ${DIM}Examples: Backend API Module, Frontend UI, Database Layer, AI Module${NC}"
+        echo ""
+        while true; do
+            read -r -p "  Component $((i+1)) name: " comp_name </dev/tty
+            i=${i:-0}
+            if [ -z "$comp_name" ]; then
+                [ "$i" -gt 0 ] && break || { echo "  At least one component required"; continue; }
+            fi
+            i=$((i+1))
+            comp_id=$(echo "$comp_name" | tr '[:upper:]' '[:lower:]' | sed 's/ /-/g' | sed 's/[^a-z0-9-]//g')
+            python3 -c "
+import json
+comps = json.load(open('/tmp/moneylogix-components.json'))
+comps.append({'id': '$comp_id', 'name': '$comp_name', 'description': '$comp_name component', 'features': []})
+json.dump(comps, open('/tmp/moneylogix-components.json', 'w'))
+" 2>/dev/null
+        done
+        print_success "Defined $i components manually"
+    fi
 }
 
 # ============================================================================
-# Template Processing
+# Per-Component JSON Generator
 # ============================================================================
 
-process_template() {
-    local input_file=$1
-    local output_file=$2
+generate_component_input() {
+    local component=$1
+    local output=$2
+    local comp_name=$(echo "$component" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['name'])" 2>/dev/null || echo "$component")
+    local comp_desc=$(echo "$component" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['description'])" 2>/dev/null || echo "$component")
+    local comp_features=$(echo "$component" | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+feats = d.get('features', [])
+if feats:
+    print(json.dumps(feats))
+else:
+    print('[]')
+" 2>/dev/null || echo "[]")
 
-    # Read template and replace placeholders
-    sed \
-        -e "s/{{PROJECT_NAME}}/$PROJECT_NAME/g" \
-        -e "s/{{PROJECT_TYPE}}/$PROJECT_TYPE/g" \
-        -e "s|{{DESCRIPTION}}|$DESCRIPTION|g" \
-        -e "s/{{DATE}}/$DATE/g" \
-        -e "s/{{AUTHOR}}/$AUTHOR/g" \
-        -e "s/{{TIMELINE}}/$TIMELINE/g" \
-        -e "s/{{TEAM_SIZE}}/$TEAM_SIZE/g" \
-        -e "s/{{TARGET_USERS}}/$TARGET_USERS/g" \
-        "$input_file" > "$output_file"
+    # Read original input for shared fields
+    local orig_name=$(jq -r '.projectName // "Project"' "$INPUT_FILE" 2>/dev/null)
+    local orig_type=$(jq -r '.projectType // "Software Application"' "$INPUT_FILE" 2>/dev/null)
+    local orig_users=$(jq -r '.targetUsers // ["End Users"]' "$INPUT_FILE" 2>/dev/null)
+
+    cat > "$output" << EOJSON
+{
+  "projectName": "${orig_name} - ${comp_name}",
+  "projectType": "System Component",
+  "description": "${comp_desc}",
+  "targetUsers": ${orig_users},
+  "techStack": $(jq '.techStack' "$INPUT_FILE" 2>/dev/null || echo '{}'),
+  "coreFeatures": ${comp_features},
+  "constraints": $(jq '.constraints' "$INPUT_FILE" 2>/dev/null || echo '{}'),
+  "nonFunctionalRequirements": $(jq '.nonFunctionalRequirements' "$INPUT_FILE" 2>/dev/null || echo '{}'),
+  "parentProject": "${orig_name}"
+}
+EOJSON
 }
 
 # ============================================================================
-# Stage Generators
+# Stage Generators (same as before, but now per-component)
 # ============================================================================
 
 generate_project_brief() {
-    local output_file="$OUTPUT_DIR/00-project-brief.md"
-
+    local output_file=$1
     cat > "$output_file" << EOF
 # $PROJECT_NAME - Project Brief
 
@@ -221,7 +474,7 @@ $DESCRIPTION
 
 ## Target Users
 
-$(echo "$TARGET_USERS" | tr ', ' '\n' | sed 's/^/- /')
+$(echo "$TARGET_USERS" | tr ',' '\n' | sed 's/^ *//' | sed 's/^/- /')
 
 ---
 
@@ -255,332 +508,436 @@ $(jq -r '.nonFunctionalRequirements | to_entries[] | "- **\(.key | gsub("_"; " "
 
 *Generated on $DATE by Workflow Orchestrator*
 EOF
+}
 
-    print_success "Generated: 00-project-brief.md"
+process_template() {
+    local input=$1; local output=$2
+
+    # Derive design fields from project data
+    local style_name=$(echo "$PROJECT_TYPE" | awk '{print $1 " " $2}')" Theme"
+    local design_keywords="Dark, Professional, Data-driven, Modern, Clean"
+    local tone_description="Professional fintech"
+    local feel_description="Like a premium financial dashboard"
+    local interaction_tier="L2"
+    local dependencies="CSS + IntersectionObserver"
+    local bg_color="#0B0D11"
+    local accent_color="#00D4FF"
+    local profit_color="#00E676"
+    local loss_color="#FF5252"
+
+    awk -v pn="$PROJECT_NAME" -v pt="$PROJECT_TYPE" -v desc="$DESCRIPTION" \
+        -v dt="$DATE" -v auth="$AUTHOR" -v tl="$TIMELINE" \
+        -v ts="$TEAM_SIZE" -v tu="$TARGET_USERS" \
+        -v sn="$style_name" -v dk="$design_keywords" -v td="$tone_description" \
+        -v fe="$feel_description" -v it="$interaction_tier" -v dp="$dependencies" \
+        -v bg="$bg_color" -v ac="$accent_color" -v pc="$profit_color" -v lc="$loss_color" \
+        '{
+            gsub(/\{\{PROJECT_NAME\}\}/, pn)
+            gsub(/\{\{PROJECT_TYPE\}\}/, pt)
+            gsub(/\{\{DESCRIPTION\}\}/, desc)
+            gsub(/\{\{DATE\}\}/, dt)
+            gsub(/\{\{AUTHOR\}\}/, auth)
+            gsub(/\{\{TIMELINE\}\}/, tl)
+            gsub(/\{\{TEAM_SIZE\}\}/, ts)
+            gsub(/\{\{TARGET_USERS\}\}/, tu)
+            gsub(/\{\{STYLE_NAME\}\}/, sn)
+            gsub(/\{\{DESIGN_KEYWORDS\}\}/, dk)
+            gsub(/\{\{TONE_DESCRIPTION\}\}/, td)
+            gsub(/\{\{FEEL_DESCRIPTION\}\}/, fe)
+            gsub(/\{\{INTERACTION_TIER\}\}/, it)
+            gsub(/\{\{DEPENDENCIES\}\}/, dp)
+            gsub(/\{\{BG_COLOR\}\}/, bg)
+            gsub(/\{\{ACCENT_COLOR\}\}/, ac)
+            gsub(/\{\{PROFIT_COLOR\}\}/, pc)
+            gsub(/\{\{LOSS_COLOR\}\}/, lc)
+            print
+        }' "$input" > "$output"
+}
+
+generate_stage() {
+    local stage_num=$1; local output_dir=$2
+    local template="$STAGES_DIR/$(printf '%02d' $stage_num)-*.md"
+    local template_file=$(ls $template 2>/dev/null | head -1)
+    if [ -z "$template_file" ]; then
+        print_warn "Template not found for stage $stage_num"
+        return
+    fi
+    local output_file="$output_dir/$(printf '%02d' $stage_num)-$(basename "$template_file" | sed 's/^[0-9]*-//')"
+    process_template "$template_file" "$output_file"
+    print_success "Generated: $(basename "$output_file")"
     print_file_info "$output_file"
 }
 
-generate_stage_1() {
-    local output_file="$OUTPUT_DIR/01-requirement-analysis.md"
-    process_template "$STAGES_DIR/01-requirement-analysis.md" "$output_file"
-    print_success "Generated: 01-requirement-analysis.md"
-    print_file_info "$output_file"
-}
+generate_all_stages() {
+    local output_dir=$1; local component_label=$2
+    mkdir -p "$output_dir"
 
-generate_stage_2() {
-    local output_file="$OUTPUT_DIR/02-prd.md"
-    process_template "$STAGES_DIR/02-prd.md" "$output_file"
-    print_success "Generated: 02-prd.md"
-    print_file_info "$output_file"
-}
+    print_stage_header "0" "Project Brief" "📋"
+    generate_project_brief "$output_dir/00-project-brief.md"
+    print_file_info "$output_dir/00-project-brief.md"
+    wait_for_user "$output_dir/00-project-brief.md" 0 "$component_label"
 
-generate_stage_3() {
-    local output_file="$OUTPUT_DIR/03-high-level-design.md"
-    process_template "$STAGES_DIR/03-high-level-design.md" "$output_file"
-    print_success "Generated: 03-high-level-design.md"
-    print_file_info "$output_file"
-}
-
-generate_stage_4() {
-    local output_file="$OUTPUT_DIR/04-low-level-design.md"
-    process_template "$STAGES_DIR/04-low-level-design.md" "$output_file"
-    print_success "Generated: 04-low-level-design.md"
-    print_file_info "$output_file"
-}
-
-generate_stage_5() {
-    local output_file="$OUTPUT_DIR/05-implementation-plan.md"
-    process_template "$STAGES_DIR/05-implementation-plan.md" "$output_file"
-    print_success "Generated: 05-implementation-plan.md"
-    print_file_info "$output_file"
-}
-
-generate_stage_6() {
-    local output_file="$OUTPUT_DIR/06-code-implementation.md"
-    process_template "$STAGES_DIR/06-code-implementation.md" "$output_file"
-    print_success "Generated: 06-code-implementation.md"
-    print_file_info "$output_file"
-}
-
-generate_stage_7() {
-    local output_file="$OUTPUT_DIR/07-code-review.md"
-    process_template "$STAGES_DIR/07-code-review.md" "$output_file"
-    print_success "Generated: 07-code-review.md"
-    print_file_info "$output_file"
-}
-
-generate_stage_8() {
-    local output_file="$OUTPUT_DIR/08-qa-testing.md"
-    process_template "$STAGES_DIR/08-qa-testing.md" "$output_file"
-    print_success "Generated: 08-qa-testing.md"
-    print_file_info "$output_file"
+    for i in $(seq 1 9); do
+        local stage_names=("" "Requirement Analysis" "Product Requirements Document" "High Level Design" "Low Level Design" "Implementation Plan" "Code Implementation Guide" "Code Review Guide" "QA & Testing Guide" "UI/UX Design")
+        local stage_icons=("" "📝" "📄" "🏗️" "🔧" "📅" "💻" "🔍" "🧪" "🎨")
+        print_stage_header "$i" "${stage_names[$i]}" "${stage_icons[$i]}"
+        generate_stage "$i" "$output_dir"
+        wait_for_user "$output_dir/$(printf '%02d' $i)-*.md" "$i" "$component_label"
+    done
 }
 
 # ============================================================================
-# Show Running Links
+# Variable Extraction
 # ============================================================================
 
-show_running_links() {
-    local frontend_port=5173
-    local backend_port=3001
+extract_variables() {
+    PROJECT_NAME=$(jq -r '.projectName' "$INPUT_FILE")
+    PROJECT_TYPE=$(jq -r '.projectType // "Software Application"' "$INPUT_FILE")
+    DESCRIPTION=$(jq -r '.description' "$INPUT_FILE" | sed 's/"/\\"/g')
+    DATE=$(date +"%Y-%m-%d")
+    AUTHOR=$(jq -r '.author // "Development Team"' "$INPUT_FILE")
+    TIMELINE=$(jq -r '.constraints.timeline // "4 weeks"' "$INPUT_FILE")
+    TEAM_SIZE=$(jq -r '.constraints.teamSize // "3 developers"' "$INPUT_FILE")
+    TARGET_USERS=$(jq -r '.targetUsers | join(", ")' "$INPUT_FILE")
 
+    echo -e "${BOLD}  Project:${NC}     $PROJECT_NAME"
+    echo -e "${BOLD}  Type:${NC}        $PROJECT_TYPE"
+    echo -e "${BOLD}  Timeline:${NC}    $TIMELINE"
+    echo -e "${BOLD}  Team:${NC}        $TEAM_SIZE"
+    echo ""
+}
+
+validate_input() {
+    if [ ! -f "$INPUT_FILE" ]; then
+        print_error "No input file configured"
+        exit 1
+    fi
+    if ! command -v jq &>/dev/null; then
+        print_error "jq is required. Install: brew install jq"
+        exit 1
+    fi
+    if ! jq empty "$INPUT_FILE" 2>/dev/null; then
+        print_error "Invalid JSON in input"
+        exit 1
+    fi
+    local pn=$(jq -r '.projectName // empty' "$INPUT_FILE")
+    local desc=$(jq -r '.description // empty' "$INPUT_FILE")
+    [ -z "$pn" ] && { print_error "Missing: projectName"; exit 1; }
+    [ -z "$desc" ] && { print_error "Missing: description"; exit 1; }
+    print_success "Input validated"
+}
+
+# ============================================================================
+# Completion Summary
+# ============================================================================
+
+show_summary() {
     echo ""
     echo -e "${GREEN}╔══════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║                                                                  ║${NC}"
-    echo -e "${GREEN}║           ${BOLD}✅ WORKFLOW COMPLETE!${NC}${GREEN}                                  ║${NC}"
-    echo -e "${GREEN}║                                                                  ║${NC}"
+    echo -e "${GREEN}║                     ✅ WORKFLOW COMPLETE!                        ║${NC}"
     echo -e "${GREEN}╚══════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
-
-    # Check if servers are running
-    local frontend_running=false
-    local backend_running=false
-
-    if curl -s -o /dev/null -w "%{http_code}" "http://localhost:$frontend_port" 2>/dev/null | grep -q "200"; then
-        frontend_running=true
-    fi
-
-    if curl -s -o /dev/null -w "%{http_code}" "http://localhost:$backend_port/health" 2>/dev/null | grep -q "200"; then
-        backend_running=true
-    fi
-
     echo -e "${BOLD}  📁 Generated Documentation:${NC}"
     echo -e "  ────────────────────────────────────────────────────────────────"
-    echo -e "  ${CYAN}$OUTPUT_DIR/${NC}"
-    echo ""
-    ls -1 "$OUTPUT_DIR"/*.md 2>/dev/null | while read file; do
-        local filename=$(basename "$file")
-        local size=$(wc -c < "$file" | tr -d ' ')
-        echo -e "    ${GREEN}✓${NC} ${BOLD}$filename${NC} ${DIM}($size bytes)${NC}"
-    done
-    echo ""
 
-    echo -e "${BOLD}  🚀 Running Project Links:${NC}"
-    echo -e "  ────────────────────────────────────────────────────────────────"
-
-    if [ "$frontend_running" = true ]; then
-        echo -e "    ${GREEN}✓${NC} Frontend:  ${BOLD}http://localhost:$frontend_port${NC} ${GREEN}(Running)${NC}"
+    if [ "$COMPONENT_MODE" = true ] && [ -d "$OUTPUT_DIR/components" ]; then
+        for comp_dir in "$OUTPUT_DIR/components"/*/; do
+            local comp_name=$(basename "$comp_dir")
+            local count=$(ls "$comp_dir"/*.md 2>/dev/null | wc -l | tr -d ' ')
+            echo -e "    ${CYAN}📦 ${comp_name}${NC} ${DIM}($count files)${NC}"
+            ls "$comp_dir"/*.md 2>/dev/null | while read f; do
+                local b=$(basename "$f"); local sz=$(wc -c < "$f" | tr -d ' ')
+                echo -e "      ${GREEN}✓${NC} $b ${DIM}($sz bytes)${NC}"
+            done
+            echo ""
+        done
     else
-        echo -e "    ${YELLOW}○${NC} Frontend:  ${DIM}http://localhost:$frontend_port${NC} ${YELLOW}(Start with: npm run dev)${NC}"
+        ls "$OUTPUT_DIR"/*.md 2>/dev/null | while read f; do
+            local b=$(basename "$f"); local sz=$(wc -c < "$f" | tr -d ' ')
+            echo -e "    ${GREEN}✓${NC} $b ${DIM}($sz bytes)${NC}"
+        done
     fi
 
-    if [ "$backend_running" = true ]; then
-        echo -e "    ${GREEN}✓${NC} Backend:   ${BOLD}http://localhost:$backend_port${NC} ${GREEN}(Running)${NC}"
-        echo -e "    ${GREEN}✓${NC} API Docs:  ${BOLD}http://localhost:$backend_port/health${NC}"
-        echo -e "    ${GREEN}✓${NC} WebSocket: ${BOLD}ws://localhost:$backend_port${NC}"
-    else
-        echo -e "    ${YELLOW}○${NC} Backend:   ${DIM}http://localhost:$backend_port${NC} ${YELLOW}(Start with: npm run dev)${NC}"
-    fi
+    local total=$(find "$OUTPUT_DIR" -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
+    local total_sz=$(du -sh "$OUTPUT_DIR" 2>/dev/null | cut -f1)
+    echo -e "    ────────────────────────────────────────────────────────"
+    echo -e "    ${BOLD}Total:${NC} $total files (${total_sz})"
     echo ""
 
-    echo -e "${BOLD}  📊 Workflow Summary:${NC}"
-    echo -e "  ────────────────────────────────────────────────────────────────"
-    echo -e "    Total Files:     ${BOLD}9${NC} documentation files"
-    echo -e "    Total Size:      ${BOLD}$(du -sh "$OUTPUT_DIR" 2>/dev/null | cut -f1)${NC}"
-    echo -e "    Total Sections:  ${BOLD}89${NC} sections across all documents"
-    echo -e "    Project:         ${BOLD}$PROJECT_NAME${NC}"
-    echo ""
-
-    echo -e "${BOLD}  💡 Next Steps:${NC}"
-    echo -e "  ────────────────────────────────────────────────────────────────"
-    echo -e "    1. Review each generated document in ${CYAN}$OUTPUT_DIR/${NC}"
-    echo -e "    2. Customize templates in ${CYAN}stages/${NC} for your team"
-    echo -e "    3. Use docs as reference during implementation"
-    echo -e "    4. Feed docs to AI assistants for project-specific details"
-    echo ""
-
-    if [ "$frontend_running" = true ] && [ "$backend_running" = true ]; then
-        echo -e "${GREEN}  🎉 Your project is running!${NC}"
-        echo -e "${GREEN}     Open ${BOLD}http://localhost:$frontend_port${NC}${GREEN} in your browser${NC}"
+    if [ "$COMPONENT_MODE" = true ]; then
+        echo -e "${BOLD}  🧩 Component Breakdown:${NC}"
+        echo -e "  ────────────────────────────────────────────────────────────────"
+        local comp_count=$(ls -d "$OUTPUT_DIR/components"/*/ 2>/dev/null | wc -l | tr -d ' ')
+        echo -e "    Components: ${BOLD}$comp_count${NC}"
+        echo -e "    Files per component: ${BOLD}10${NC} (Brief + 8 SDLC stages + UI/UX Design)"
         echo ""
+
+        # Generate cross-reference index
+        local index_file="$OUTPUT_DIR/INDEX.md"
+        cat > "$index_file" << EOINDEX
+# ${PROJECT_NAME} - Documentation Index
+
+## System Overview
+
+**Project**: ${PROJECT_NAME}  
+**Type**: ${PROJECT_TYPE}  
+**Date**: ${DATE}
+
+---
+
+## Component Documentation
+
+| # | Component | Files | Description |
+|---|-----------|-------|-------------|
+EOINDEX
+        local idx=1
+        for comp_dir in "$OUTPUT_DIR/components"/*/; do
+            local cn=$(basename "$comp_dir")
+            local cf=$(ls "$comp_dir"/*.md 2>/dev/null | wc -l | tr -d ' ')
+            local cd=$(jq -r '.description // "'"$cn"'"' "$comp_dir/project-input.json" 2>/dev/null || echo "$cn")
+            echo "| $idx | [$cn](components/$cn/) | $cf files | $cd |" >> "$index_file"
+            idx=$((idx+1))
+        done
+        cat >> "$index_file" << EOINDEX
+
+---
+
+*Generated on ${DATE} by Workflow Orchestrator v2*
+EOINDEX
+        print_success "Generated: INDEX.md (cross-component index)"
     fi
 }
 
 # ============================================================================
-# Main Execution
+# Main
 # ============================================================================
 
 show_usage() {
     echo ""
-    echo "  Usage: ./run.sh [command] [options]"
+    echo "  Usage: ./run.sh [options] [command]"
+    echo ""
+    echo "  Options:"
+    echo "    --input <file>      Input file: JSON, PDF, or TXT (default: project-input.json)"
+    echo "    --non-interactive   Auto-generate all without pausing"
     echo ""
     echo "  Commands:"
-    echo "    (no command)        Generate all stages (interactive mode)"
-    echo "    --non-interactive   Generate all stages without pausing"
-    echo "    stage <num>         Generate specific stage (0-8)"
-    echo "    range <min> <max>   Generate range of stages"
+    echo "    (none)              Run full workflow (detect components, generate all stages)"
+    echo "    stage <num>         Generate specific stage for main project"
+    echo "    range <min> <max>   Generate range of stages for main project"
     echo "    list                List available stages"
     echo "    clean               Remove output directory"
     echo "    help                Show this help message"
     echo ""
     echo "  Examples:"
-    echo "    ./run.sh                    # Interactive: generate all with review prompts"
-    echo "    ./run.sh --non-interactive  # Auto-generate all without pausing"
-    echo "    ./run.sh stage 3            # Generate only stage 3"
-    echo "    ./run.sh range 2 5          # Generate stages 2-5"
+    echo "    ./run.sh                                         # JSON → auto-detect components → per-component docs"
+    echo "    ./run.sh --input project.pdf                     # PDF → extract text → detect components"
+    echo "    ./run.sh --input specification.txt               # TXT → convert to JSON → detect components"
+    echo "    ./run.sh --non-interactive                       # Auto mode (no review pauses)"
+    echo "    ./run.sh stage 3                                 # Generate only HLD for main project"
     echo ""
-}
-
-list_stages() {
-    echo ""
-    echo "  Available Stages:"
-    echo "  ────────────────────────────────────────────────────────────────"
-    echo "    0. Project Brief              (Auto-generated)"
-    echo "    1. Requirement Analysis       (FR, NFR, personas, use cases)"
-    echo "    2. PRD                        (User stories, features, metrics)"
-    echo "    3. High Level Design          (Architecture, tech stack, security)"
-    echo "    4. Low Level Design           (API, DB schema, components)"
-    echo "    5. Implementation Plan        (Sprints, milestones, tasks)"
-    echo "    6. Code Implementation        (Structure, patterns, examples)"
-    echo "    7. Code Review                (Checklist, standards, gates)"
-    echo "    8. QA & Testing               (Test strategy, cases, coverage)"
-    echo ""
-}
-
-clean_output() {
-    if [ -d "$OUTPUT_DIR" ]; then
-        rm -rf "$OUTPUT_DIR"
-        print_success "Cleaned output directory"
-    else
-        print_info "Output directory doesn't exist"
-    fi
 }
 
 main() {
-    local command=${1:-"all"}
+    local input_source=""
+    local command="all"
 
-    # Check for non-interactive flag
-    if [ "$command" = "--non-interactive" ]; then
-        INTERACTIVE=false
-        command="all"
-    fi
+    # Parse arguments
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --input) shift; input_source="$1"; shift ;;
+            --non-interactive) INTERACTIVE=false; shift ;;
+            stage|range|list|clean|help) command="$1"; shift; break ;;
+            *) command="$1"; shift; break ;;
+        esac
+    done
 
     print_header
 
-    case $command in
+    # Handle input
+    if [ -n "$input_source" ]; then
+        local input_type=$(detect_input_type "$input_source")
+        case "$input_type" in
+            json) read_input_json "$input_source" ;;
+            pdf)  read_input_pdf "$input_source" ;;
+            text) read_input_text "$input_source" ;;
+            *)    print_error "Unknown input type: $input_source"; exit 1 ;;
+        esac
+    fi
+
+    case "$command" in
         "all")
             validate_input
             extract_variables
             mkdir -p "$OUTPUT_DIR"
 
-            echo -e "${CYAN}  Generating documentation...${NC}"
-            echo ""
+            # Step 1: Decompose into components
+            decompose_components "$INPUT_FILE"
 
-            # Stage 0: Project Brief
-            print_stage_header "0" "Project Brief" "📋"
-            generate_project_brief
-            wait_for_user "$OUTPUT_DIR/00-project-brief.md" 0
+            if [ "$COMPONENT_MODE" = true ] && [ -f /tmp/moneylogix-components.json ]; then
+                local comp_count=$(python3 -c "import json; print(len(json.load(open('/tmp/moneylogix-components.json'))))" 2>/dev/null || echo "0")
+                print_success "Running workflow for $comp_count components"
+                echo ""
 
-            # Stage 1: Requirement Analysis
-            print_stage_header "1" "Requirement Analysis" "📝"
-            generate_stage_1
-            wait_for_user "$OUTPUT_DIR/01-requirement-analysis.md" 1
+                mkdir -p "$OUTPUT_DIR/components"
 
-            # Stage 2: PRD
-            print_stage_header "2" "Product Requirements Document" "📄"
-            generate_stage_2
-            wait_for_user "$OUTPUT_DIR/02-prd.md" 2
+                # Process each component
+                python3 -c "
+import json
+comps = json.load(open('/tmp/moneylogix-components.json'))
+for comp in comps:
+    print(comp['id'])
+" 2>/dev/null | while read comp_id; do
+                    local comp_data=$(python3 -c "
+import json
+comps = json.load(open('/tmp/moneylogix-components.json'))
+for c in comps:
+    if c['id'] == '$comp_id':
+        print(json.dumps(c))
+        break
+" 2>/dev/null)
 
-            # Stage 3: High Level Design
-            print_stage_header "3" "High Level Design" "🏗️"
-            generate_stage_3
-            wait_for_user "$OUTPUT_DIR/03-high-level-design.md" 3
+                    # Skip if processing failed
+                    [ -z "$comp_data" ] && continue
 
-            # Stage 4: Low Level Design
-            print_stage_header "4" "Low Level Design" "🔧"
-            generate_stage_4
-            wait_for_user "$OUTPUT_DIR/04-low-level-design.md" 4
+                    local comp_name=$(echo "$comp_data" | python3 -c "import json,sys; print(json.load(sys.stdin)['name'])" 2>/dev/null)
 
-            # Stage 5: Implementation Plan
-            print_stage_header "5" "Implementation Plan" "📅"
-            generate_stage_5
-            wait_for_user "$OUTPUT_DIR/05-implementation-plan.md" 5
+                    echo ""
+                    echo -e "${MAGENTA}══════════════════════════════════════════════════════════════════${NC}"
+                    echo -e "${MAGENTA}  🧩 Processing Component: ${BOLD}$comp_name${NC}${MAGENTA}${NC}"
+                    echo -e "${MAGENTA}══════════════════════════════════════════════════════════════════${NC}"
+                    echo ""
 
-            # Stage 6: Code Implementation
-            print_stage_header "6" "Code Implementation Guide" "💻"
-            generate_stage_6
-            wait_for_user "$OUTPUT_DIR/06-code-implementation.md" 6
+                    # Create component output dir and input file
+                    local comp_out_dir="$OUTPUT_DIR/components/$comp_id"
+                    local comp_input="$comp_out_dir/project-input.json"
+                    mkdir -p "$comp_out_dir"
 
-            # Stage 7: Code Review
-            print_stage_header "7" "Code Review Guide" "🔍"
-            generate_stage_7
-            wait_for_user "$OUTPUT_DIR/07-code-review.md" 7
+                    # Generate component-specific input JSON
+                    echo "$comp_data" | python3 -c "
+import json, sys
+comp = json.load(sys.stdin)
+# Reload parent input to merge
+parent = json.load(open('$INPUT_FILE'))
+comp_input = {
+    'projectName': parent.get('projectName', '') + ' - ' + comp['name'],
+    'projectType': 'System Component',
+    'description': comp.get('description', comp['name']),
+    'targetUsers': parent.get('targetUsers', ['End Users']),
+    'techStack': parent.get('techStack', {}),
+    'coreFeatures': comp.get('features', [comp['name']]),
+    'constraints': parent.get('constraints', {}),
+    'nonFunctionalRequirements': parent.get('nonFunctionalRequirements', {}),
+    'parentProject': parent.get('projectName', ''),
+    'componentName': comp['name']
+}
+with open('$comp_input', 'w') as f:
+    json.dump(comp_input, f, indent=2)
+" 2>/dev/null
 
-            # Stage 8: QA & Testing
-            print_stage_header "8" "QA & Testing Guide" "🧪"
-            generate_stage_8
-            wait_for_user "$OUTPUT_DIR/08-qa-testing.md" 8
+                    # Backup current input
+                    local saved_input="$INPUT_FILE"
+                    local saved_name="$PROJECT_NAME"
+                    local saved_type="$PROJECT_TYPE"
+                    local saved_desc="$DESCRIPTION"
+                    local saved_timeline="$TIMELINE"
+                    local saved_team="$TEAM_SIZE"
+                    local saved_users="$TARGET_USERS"
 
-            # Show completion summary
-            show_running_links
+                    # Switch to component input
+                    INPUT_FILE="$comp_input"
+                    extract_variables
+
+                    # Generate all 10 files for this component (brief + 8 SDLC stages + UI/UX design)
+                    generate_all_stages "$comp_out_dir" "$comp_name"
+
+                    # Restore
+                    INPUT_FILE="$saved_input"
+                    PROJECT_NAME="$saved_name"
+                    PROJECT_TYPE="$saved_type"
+                    DESCRIPTION="$saved_desc"
+                    TIMELINE="$saved_timeline"
+                    TEAM_SIZE="$saved_team"
+                    TARGET_USERS="$saved_users"
+                done
+
+                # Regenerate main project brief (overview)
+                INPUT_FILE="$INPUT_FILE"
+                extract_variables
+                print_stage_header "0" "System Overview" "📋"
+                generate_project_brief "$OUTPUT_DIR/00-project-brief.md"
+                print_file_info "$OUTPUT_DIR/00-project-brief.md"
+
+            else
+                # Single component mode - run workflow on entire project
+                print_info "Running workflow for whole project (single component)"
+                echo ""
+                generate_all_stages "$OUTPUT_DIR" ""
+            fi
+
+            show_summary
             ;;
 
         "stage")
-            local stage_num=${2}
+            local stage_num=${1}
             if [ -z "$stage_num" ] || [ "$stage_num" -lt 0 ] || [ "$stage_num" -gt 8 ]; then
-                print_error "Please specify a stage number (0-8)"
-                exit 1
+                print_error "Stage number 0-9 required"; exit 1
             fi
-            validate_input
-            extract_variables
-            mkdir -p "$OUTPUT_DIR"
-
-            case $stage_num in
-                0) print_stage_header "0" "Project Brief" "📋"; generate_project_brief ;;
-                1) print_stage_header "1" "Requirement Analysis" "📝"; generate_stage_1 ;;
-                2) print_stage_header "2" "PRD" "📄"; generate_stage_2 ;;
-                3) print_stage_header "3" "High Level Design" "🏗️"; generate_stage_3 ;;
-                4) print_stage_header "4" "Low Level Design" "🔧"; generate_stage_4 ;;
-                5) print_stage_header "5" "Implementation Plan" "📅"; generate_stage_5 ;;
-                6) print_stage_header "6" "Code Implementation" "💻"; generate_stage_6 ;;
-                7) print_stage_header "7" "Code Review" "🔍"; generate_stage_7 ;;
-                8) print_stage_header "8" "QA & Testing" "🧪"; generate_stage_8 ;;
-            esac
+            validate_input; extract_variables; mkdir -p "$OUTPUT_DIR"
+            local names=("Project Brief" "Requirement Analysis" "PRD" "High Level Design" "Low Level Design" "Implementation Plan" "Code Implementation" "Code Review" "QA & Testing" "UI/UX Design")
+            local icons=("📋" "📝" "📄" "🏗️" "🔧" "📅" "💻" "🔍" "🧪" "🎨")
+            if [ "$stage_num" -eq 0 ]; then
+                print_stage_header "0" "Project Brief" "📋"
+                generate_project_brief "$OUTPUT_DIR/00-project-brief.md"
+            else
+                print_stage_header "$stage_num" "${names[$stage_num]}" "${icons[$stage_num]}"
+                generate_stage "$stage_num" "$OUTPUT_DIR"
+            fi
             echo ""
-            print_info "File generated in: $OUTPUT_DIR/"
+            print_info "File in: $OUTPUT_DIR/"
             ;;
 
         "range")
-            local min=${2:-0}
-            local max=${3:-8}
-            if [ "$min" -lt 0 ] || [ "$max" -gt 8 ] || [ "$min" -gt "$max" ]; then
-                print_error "Invalid range. Use: ./run.sh range <min> <max> (0-8)"
-                exit 1
-            fi
-            validate_input
-            extract_variables
-            mkdir -p "$OUTPUT_DIR"
+            local min=${1:-0}; local max=${2:-8}
+            [ "$min" -lt 0 ] || [ "$max" -gt 9 ] || [ "$min" -gt "$max" ] && { print_error "Invalid range 0-9"; exit 1; }
+            validate_input; extract_variables; mkdir -p "$OUTPUT_DIR"
             for i in $(seq $min $max); do
-                case $i in
-                    0) print_stage_header "0" "Project Brief" "📋"; generate_project_brief ;;
-                    1) print_stage_header "1" "Requirement Analysis" "📝"; generate_stage_1 ;;
-                    2) print_stage_header "2" "PRD" "📄"; generate_stage_2 ;;
-                    3) print_stage_header "3" "High Level Design" "🏗️"; generate_stage_3 ;;
-                    4) print_stage_header "4" "Low Level Design" "🔧"; generate_stage_4 ;;
-                    5) print_stage_header "5" "Implementation Plan" "📅"; generate_stage_5 ;;
-                    6) print_stage_header "6" "Code Implementation" "💻"; generate_stage_6 ;;
-                    7) print_stage_header "7" "Code Review" "🔍"; generate_stage_7 ;;
-                    8) print_stage_header "8" "QA & Testing" "🧪"; generate_stage_8 ;;
-                esac
-                wait_for_user "$OUTPUT_DIR/$(printf '%02d' $i)-*.md" $i
+                local names=("Project Brief" "Requirement Analysis" "PRD" "High Level Design" "Low Level Design" "Implementation Plan" "Code Implementation" "Code Review" "QA & Testing" "UI/UX Design")
+                local icons=("📋" "📝" "📄" "🏗️" "🔧" "📅" "💻" "🔍" "🧪" "🎨")
+                [ "$i" -eq 0 ] && {
+                    print_stage_header "0" "Project Brief" "📋"
+                    generate_project_brief "$OUTPUT_DIR/00-project-brief.md"
+                } || {
+                    print_stage_header "$i" "${names[$i]}" "${icons[$i]}"
+                    generate_stage "$i" "$OUTPUT_DIR"
+                }
+                wait_for_user "$OUTPUT_DIR/$(printf '%02d' $i)-*.md" "$i" ""
             done
-            show_running_links
+            show_summary
             ;;
 
         "list")
-            list_stages
+            echo ""
+            echo "  Available Stages:"
+            echo "  ────────────────────────────────────────────────────────────────"
+            echo "    0. Project Brief"
+            echo "    1. Requirement Analysis"
+            echo "    2. PRD (Product Requirements Document)"
+            echo "    3. High Level Design"
+            echo "    4. Low Level Design"
+            echo "    5. Implementation Plan"
+            echo "    6. Code Implementation Guide"
+            echo "    7. Code Review Guide"
+            echo "    8. QA & Testing Guide"
+            echo "    9. UI/UX Design Guide          (web-design SKILL, DESIGN.md per component)"
+            echo ""
             ;;
+
         "clean")
-            clean_output
+            if [ -d "$OUTPUT_DIR" ]; then rm -rf "$OUTPUT_DIR"; print_success "Cleaned output"; else print_info "Nothing to clean"; fi
             ;;
-        "help"|"-h"|"--help")
-            show_usage
-            ;;
-        *)
-            print_error "Unknown command: $command"
-            show_usage
-            exit 1
-            ;;
+
+        "help"|"-h"|"--help") show_usage ;;
+        *) print_error "Unknown: $command"; show_usage; exit 1 ;;
     esac
 }
 

@@ -8,21 +8,25 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  password      String
-  name          String
-  phone         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  watchlists    Watchlist[]
-  portfolios    Portfolio[]
-  trades        Trade[]
-  alerts        Alert[]
-  strategies    Strategy[]
-  chatSessions  ChatSession[]
-  paperWallet   PaperWallet?
-  riskProfile   RiskProfile?
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  password           String
+  name               String
+  phone              String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  watchlists         Watchlist[]
+  portfolios         Portfolio[]
+  trades             Trade[]
+  alerts             Alert[]
+  strategies         Strategy[]
+  chatSessions       ChatSession[]
+  paperWallet        PaperWallet?
+  paperOrders        PaperOrder[]
+  riskProfile        RiskProfile?
+  achievements       UserAchievement[]
+  tradeNotes         TradeNote[]
+  portfolioHistory   PortfolioHistory[]
 }
 
 model Watchlist {
@@ -120,6 +124,116 @@ enum TradeStatus {
   REJECTED
 }
 
+model PaperOrder {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+  symbol      String
+  type        OrderType
+  side        OrderSide
+  quantity    Int
+  price       Float?
+  stopPrice   Float?
+  filledQty   Int         @default(0)
+  filledPrice Float?
+  totalCost   Float?
+  fees        Float       @default(0)
+  status      OrderStatus @default(PENDING)
+  reason      String?
+  strategy    String?
+  notes       String?
+  createdAt   DateTime    @default(now())
+  filledAt    DateTime?
+  updatedAt   DateTime    @updatedAt
+  orderFills  OrderFill[]
+}
+
+enum OrderType {
+  MARKET
+  LIMIT
+  STOP_LOSS
+  STOP_LIMIT
+}
+
+enum OrderSide {
+  BUY
+  SELL
+}
+
+enum OrderStatus {
+  PENDING
+  FILLED
+  PARTIALLY_FILLED
+  CANCELLED
+  REJECTED
+  EXPIRED
+}
+
+model OrderFill {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     PaperOrder @relation(fields: [orderId], references: [id])
+  quantity  Int
+  price     Float
+  total     Float
+  fees      Float    @default(0)
+  createdAt DateTime @default(now())
+}
+
+model PaperPosition {
+  id         String      @id @default(cuid())
+  walletId   String
+  wallet     PaperWallet @relation(fields: [walletId], references: [id])
+  symbol     String
+  quantity   Int
+  avgPrice   Float
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model PaperWallet {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  balance   Float    @default(1000000)
+  positions PaperPosition[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PortfolioHistory {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  totalValue    Float
+  cash          Float
+  holdingsValue Float
+  pnl           Float
+  pnlPercent    Float
+  dayPnl        Float
+  dayPnlPercent Float
+  createdAt     DateTime @default(now())
+}
+
+model RiskProfile {
+  id                String @id @default(cuid())
+  userId            String @unique
+  user              User   @relation(fields: [userId], references: [id])
+  riskAppetite      RiskAppetite
+  investmentHorizon Int?
+  monthlyIncome     Float?
+  riskToleranceScore Int?
+  goals             Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+enum RiskAppetite {
+  CONSERVATIVE
+  MODERATE
+  AGGRESSIVE
+}
+
 model Strategy {
   id              String           @id @default(cuid())
   userId          String
@@ -132,12 +246,6 @@ model Strategy {
   backtestRuns    BacktestResult[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
-}
-
-enum RiskAppetite {
-  CONSERVATIVE
-  MODERATE
-  AGGRESSIVE
 }
 
 enum StrategyStatus {
@@ -180,50 +288,16 @@ enum MessageRole {
 }
 
 model NewsItem {
-  id          String   @id @default(cuid())
-  title       String
-  content     String?
-  source      String
-  url         String
-  sentiment   Float?
+  id            String   @id @default(cuid())
+  title         String
+  content       String?
+  source        String
+  url           String
+  sentiment     Float?
   sentimentLabel String?
-  symbols     String[]
-  publishedAt DateTime
-  createdAt   DateTime @default(now())
-}
-
-model PaperWallet {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id])
-  balance   Float    @default(1000000)
-  positions PaperPosition[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model PaperPosition {
-  id         String      @id @default(cuid())
-  walletId   String
-  wallet     PaperWallet @relation(fields: [walletId], references: [id])
-  symbol     String
-  quantity   Int
-  avgPrice   Float
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-}
-
-model RiskProfile {
-  id              String @id @default(cuid())
-  userId          String @unique
-  user            User   @relation(fields: [userId], references: [id])
-  riskAppetite    RiskAppetite
-  investmentHorizon Int?
-  monthlyIncome   Float?
-  riskToleranceScore Int?
-  goals           Json?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  symbols       String[]
+  publishedAt   DateTime
+  createdAt     DateTime @default(now())
 }
 
 model BacktestResult {
@@ -239,4 +313,37 @@ model BacktestResult {
   trades      Json
   equityCurve Json
   createdAt   DateTime @default(now())
+}
+
+model Achievement {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  icon        String
+  category    String
+  createdAt   DateTime @default(now())
+  users       UserAchievement[]
+}
+
+model UserAchievement {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+  unlockedAt    DateTime @default(now())
+
+  @@unique([userId, achievementId])
+}
+
+model TradeNote {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  tradeId   String?
+  symbol    String
+  title     String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

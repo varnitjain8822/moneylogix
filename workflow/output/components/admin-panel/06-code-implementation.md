@@ -1,11 +1,11 @@
-# MoneyLogix - Code Implementation Guide
+# MoneyLogix - Admin Panel - Code Implementation Guide
 
 ## Document Information
 | Field | Value |
 |-------|-------|
-| Project | MoneyLogix |
+| Project | MoneyLogix - Admin Panel |
 | Version | 1.0 |
-| Date | 2026-07-28 |
+| Date | 2026-07-29 |
 | Author | Development Team |
 | Status | Draft |
 
@@ -16,7 +16,7 @@
 ### 1.1 Directory Layout
 
 ```
-MoneyLogix/
+MoneyLogix - Admin Panel/
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml
@@ -94,7 +94,7 @@ nvm use         # Use correct Node version
 ```bash
 # Clone repository
 git clone {{REPO_URL}}
-cd MoneyLogix
+cd MoneyLogix - Admin Panel
 
 # Install dependencies
 npm install
@@ -933,4 +933,4 @@ DATABASE_LOGGING=true npm run dev:backend
 
 ---
 
-*Document Version: 1.0 | Last Updated: 2026-07-28*
+*Document Version: 1.0 | Last Updated: 2026-07-29*

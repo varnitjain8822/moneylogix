@@ -20,6 +20,8 @@ import aiAdvisorRoutes from './routes/aiAdvisor';
 import newsRoutes from './routes/news';
 import backtestRoutes from './routes/backtest';
 import agentRoutes from './routes/agents';
+import paperOrderRoutes from './routes/paperOrder';
+import analyticsRoutes from './routes/analytics';
 
 const app = express();
 const server = createServer(app);
@@ -43,6 +45,8 @@ app.use('/api/ai', authenticate, aiAdvisorRoutes);
 app.use('/api/news', authenticate, newsRoutes);
 app.use('/api/backtest', authenticate, backtestRoutes);
 app.use('/api/agents', authenticate, agentRoutes);
+app.use('/api/paper', authenticate, paperOrderRoutes);
+app.use('/api/analytics', authenticate, analyticsRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

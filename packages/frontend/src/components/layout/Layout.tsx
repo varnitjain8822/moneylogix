@@ -15,6 +15,8 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  Award,
+  History,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -29,7 +31,9 @@ const navItems = [
   { path: '/research', label: 'Research', icon: Search },
   { path: '/news', label: 'News & Sentiment', icon: Newspaper },
   { path: '/paper-trading', label: 'Paper Trading', icon: Gamepad2 },
-  { path: '/backtesting', label: 'Backtesting', icon: TrendingUp },
+  { path: '/performance', label: 'Performance', icon: TrendingUp },
+  { path: '/trade-history', label: 'Trade History', icon: History },
+  { path: '/backtesting', label: 'Backtesting', icon: Award },
 ];
 
 export default function Layout() {

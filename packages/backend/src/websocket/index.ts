@@ -1,6 +1,7 @@
 import { Server as SocketServer } from 'socket.io';
 import { Server } from 'http';
 import { simulatePriceUpdate } from '../services/marketData';
+import { checkAndFillPendingOrders } from '../services/paperTradingService';
 
 export const setupWebSocket = (server: Server) => {
   const io = new SocketServer(server, {
@@ -34,11 +35,20 @@ export const setupWebSocket = (server: Server) => {
 
   // Simulate price updates every 2 seconds
   setInterval(() => {
-    const symbols = ['RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'ICICIBANK', 'SBIN', 'ITC', 'BHARTIARTL'];
-    symbols.forEach(symbol => {
+    const symbols = ['RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'ICICIBANK', 'SBIN', 'ITC', 'BHARTIARTL', 'KOTAKBANK', 'LT', 'WIPRO', 'TATAMOTORS', 'SUNPHARMA', 'MARUTI', 'AXISBANK'];
+    symbols.forEach(async symbol => {
       const update = simulatePriceUpdate(symbol);
       if (update) {
         io.to(`watchlist:${symbol}`).emit('price-update', update);
+        io.emit('price-update', update);
+        try {
+          const result = await checkAndFillPendingOrders(symbol);
+          if (result.filledCount > 0) {
+            io.emit('order-filled', { symbol, count: result.filledCount });
+          }
+        } catch (err) {
+          // silently handle order fill errors
+        }
       }
     });
   }, 2000);

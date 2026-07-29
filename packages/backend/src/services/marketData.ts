@@ -339,3 +339,29 @@ export function getHistoricalData(symbol: string, days: number = 90): StockHisto
     },
   };
 }
+
+// ─── Real API Integration ───────────────────────────
+export async function getStockQuoteReal(symbol: string) {
+  const { fetchStockFromAPI } = await import('./marketDataReal');
+  return fetchStockFromAPI(symbol);
+}
+
+export async function getAllStocksReal(): Promise<any[]> {
+  const { fetchAllStocks } = await import('./marketDataReal');
+  return fetchAllStocks();
+}
+
+export async function searchStocks(query: string): Promise<any[]> {
+  const { searchStocksReal } = await import('./marketDataReal');
+  return searchStocksReal(query);
+}
+
+export async function getHistoricalCandles(symbol: string, days: number = 90): Promise<any[]> {
+  const { getHistoricalDataReal } = await import('./marketDataReal');
+  return getHistoricalDataReal(symbol, days);
+}
+
+export async function getNews(symbol?: string): Promise<any[]> {
+  const { fetchMarketNews } = await import('./marketDataReal');
+  return fetchMarketNews(symbol);
+}

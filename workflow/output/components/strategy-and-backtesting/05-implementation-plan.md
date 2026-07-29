@@ -1,11 +1,11 @@
-# MoneyLogix - Implementation Plan
+# MoneyLogix - Strategy {{PROJECT_NAME}} Backtesting - Implementation Plan
 
 ## Document Information
 | Field | Value |
 |-------|-------|
-| Project | MoneyLogix |
+| Project | MoneyLogix - Strategy {{PROJECT_NAME}} Backtesting |
 | Version | 1.0 |
-| Date | 2026-07-28 |
+| Date | 2026-07-29 |
 | Author | Development Team |
 | Status | Draft |
 
@@ -13,7 +13,7 @@
 
 ## 1. Executive Summary
 
-This document outlines the implementation plan for MoneyLogix, including sprint breakdown, task assignments, milestones, and risk mitigation strategies.
+This document outlines the implementation plan for MoneyLogix - Strategy {{PROJECT_NAME}} Backtesting, including sprint breakdown, task assignments, milestones, and risk mitigation strategies.
 
 ### 1.1 Project Timeline
 
@@ -394,4 +394,4 @@ S1-01 → S1-04 → S1-05 → S1-06 → S1-07 → S2-02 → S2-06 → S3-03 → 
 
 ---
 
-*Document Version: 1.0 | Last Updated: 2026-07-28*
+*Document Version: 1.0 | Last Updated: 2026-07-29*

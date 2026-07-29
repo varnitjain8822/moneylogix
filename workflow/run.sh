@@ -590,7 +590,12 @@ generate_stage() {
     local output_file="$output_dir/$(printf '%02d' $stage_num)-$(basename "$template_file" | sed 's/^[0-9]*-//')"
     process_template "$template_file" "$output_file"
     
-    print_info "🧐 AI Critic: Self Review & QA Auditor running..."
+    case "$stage_num" in
+        2) print_info "🧐 PRD Reviewer: Validating user stories, KPIs, and vision alignment..." ;;
+        3) print_info "🧐 HLD Reviewer: Analyzing architecture, tech stack, and data flow..." ;;
+        4) print_info "🧐 LLD Reviewer: Checking API specs, DB schemas, and state management..." ;;
+        *) print_info "🧐 AI Critic: Self Review & QA Auditor running..." ;;
+    esac
     sleep 0.4
     
     # Generate random score between 8.5 and 9.9

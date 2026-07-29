@@ -126,7 +126,7 @@ If auto-detection fails, the script falls back to **interactive manual definitio
 3. Same AI decomposition pipeline then identifies components
 
 ### Supported Output Formats per Component
-Each component gets **9 files** covering the full SDLC:
+Each component gets **10 files** covering the full SDLC:
 
 | # | Document | Purpose |
 |---|----------|---------|
@@ -139,6 +139,7 @@ Each component gets **9 files** covering the full SDLC:
 | 6 | Code Implementation | Structure, setup, patterns, examples |
 | 7 | Code Review | Checklist, standards, quality gates |
 | 8 | QA & Testing | Strategy, test cases, performance, coverage |
+| 9 | UI/UX Design | Auto-generates `DESIGN.md` via the **`web-design`** skill |
 
 ---
 

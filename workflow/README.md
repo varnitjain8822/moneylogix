@@ -149,6 +149,8 @@ Each component gets **10 files** covering the full SDLC:
 | 8 | QA & Testing | Strategy, test cases, performance, coverage |
 | 9 | UI/UX Design | Auto-generates `DESIGN.md` via the **`web-design`** skill |
 
+> **Note**: The **`web-design`** skill instructions and reference files are bundled directly within the `workflow/skills/web-design/` directory, ensuring the UI/UX generation process is fully self-contained.
+
 ---
 
 ## Command Reference

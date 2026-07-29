@@ -1,127 +1,143 @@
-import axios from 'axios';
-
-const FINNHUB_KEY = process.env.FINNHUB_API_KEY || 'demo';
-const BASE_URL = 'https://finnhub.io/api/v1';
-
-function getHeaders(): Record<string, string> {
-  return { 'X-Finnhub-Token': FINNHUB_KEY };
-}
-
+import YahooFinance from 'yahoo-finance2';
+const yahooFinance = new YahooFinance();
 export async function getRealStockQuote(symbol: string): Promise<any> {
   try {
-    const { data } = await axios.get(`${BASE_URL}/quote`, {
-      params: { symbol },
-      headers: getHeaders(),
-    });
-
-    if (!data || data.c === 0 || !data.c) {
-      return null;
+    let quote;
+    try {
+      quote = await yahooFinance.quote(symbol);
+    } catch (err: any) {
+      if (err.name === 'FailedYahooValidationError' && err.result) {
+        quote = err.result;
+      } else {
+        throw err;
+      }
     }
+    
+    if (!quote) return null;
 
     return {
       symbol: symbol.toUpperCase(),
-      price: data.c,
-      change: data.c - (data.o || data.c),
-      changePercent: data.o && data.o > 0 ? ((data.c - data.o) / data.o) * 100 : 0,
-      high: data.h || data.c,
-      low: data.l || data.c,
-      open: data.o || data.c,
-      volume: data.v || 0,
-      previousClose: data.pc || data.c,
-      fiftyTwoWeekHigh: data.h || data.c,
-      fiftyTwoWeekLow: data.l || data.c,
-      name: symbol,
-      source: 'finnhub',
+      price: quote.regularMarketPrice || 0,
+      change: quote.regularMarketChange || 0,
+      changePercent: quote.regularMarketChangePercent || 0,
+      high: quote.regularMarketDayHigh || quote.regularMarketPrice,
+      low: quote.regularMarketDayLow || quote.regularMarketPrice,
+      open: quote.regularMarketOpen || quote.regularMarketPrice,
+      volume: quote.regularMarketVolume || 0,
+      previousClose: quote.regularMarketPreviousClose || quote.regularMarketPrice,
+      fiftyTwoWeekHigh: quote.fiftyTwoWeekHigh || quote.regularMarketPrice,
+      fiftyTwoWeekLow: quote.fiftyTwoWeekLow || quote.regularMarketPrice,
+      name: quote.longName || quote.shortName || symbol,
+      source: 'yahoo-finance',
     };
   } catch (error) {
+    console.error(`Error fetching quote for ${symbol}:`, error);
     return null;
   }
 }
 
 export async function searchStocks(query: string): Promise<any[]> {
   try {
-    const { data } = await axios.get(`${BASE_URL}/search`, {
-      params: { q: query, token: FINNHUB_KEY },
-    });
-
-    const suggestions = data.result || [];
-    return suggestions
-      .filter((s: any) => s.type === 'Common Stock' || s.type === 'ETF' || s.type === 'Index')
+    const results = await yahooFinance.search(query);
+    return results.quotes
+      .filter((q: any) => q.isYahooFinance)
       .slice(0, 10)
-      .map((s: any) => ({
-        symbol: s.symbol || s.ticker,
-        name: s.description || s.name || s.symbol,
-        type: s.type || 'Stock',
-        exchange: s.exchange || 'US',
+      .map((q: any) => ({
+        symbol: q.symbol,
+        name: q.longname || q.shortname || q.symbol,
+        type: q.quoteType || 'Stock',
+        exchange: q.exchange || 'US',
       }));
   } catch (error) {
+    console.error(`Error searching stocks for ${query}:`, error);
     return [];
   }
 }
 
 export async function getHistoricalCandles(symbol: string, resolution: string = 'D', days: number = 90): Promise<any[]> {
   try {
-    const to = Math.floor(Date.now() / 1000);
-    const from = to - (days * 24 * 60 * 60);
-
-    const { data } = await axios.get(`${BASE_URL}/stock/candle`, {
-      params: {
-        symbol,
-        resolution,
-        from,
-        to,
-        token: FINNHUB_KEY,
-      },
-    });
-
-    if (!data || !data.c || data.c.length === 0) {
-      return [];
-    }
-
-    return data.c.map((close: number, i: number) => ({
-      date: new Date(data.t[i] * 1000).toISOString().split('T')[0],
-      open: data.o[i],
-      high: data.h[i],
-      low: data.l[i],
-      close,
-      volume: data.v[i],
+    const queryOptions: any = {
+      period1: new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      interval: '1d',
+    };
+    
+    const result = await yahooFinance.historical(symbol, queryOptions);
+    return result.map((item: any) => ({
+      date: item.date.toISOString().split('T')[0],
+      open: item.open,
+      high: item.high,
+      low: item.low,
+      close: item.close,
+      volume: item.volume,
     }));
   } catch (error) {
+    console.error(`Error fetching historical for ${symbol}:`, error);
     return [];
   }
 }
 
 export async function getMultiQuotes(symbols: string[]): Promise<any[]> {
   try {
-    const { data } = await axios.get(`${BASE_URL}/quote`, {
-      params: { symbol: symbols.join(',') },
-      headers: getHeaders(),
-    });
-    return Array.isArray(data) ? data : [data];
+    const processQuotes = (rawQuotes: any) => {
+      const quotesArray = Array.isArray(rawQuotes) ? rawQuotes : [rawQuotes];
+      return quotesArray.map((quote: any) => {
+        if (!quote) return null;
+        return {
+          symbol: quote.symbol,
+          price: quote.regularMarketPrice || 0,
+          change: quote.regularMarketChange || 0,
+          changePercent: quote.regularMarketChangePercent || 0,
+          high: quote.regularMarketDayHigh || quote.regularMarketPrice,
+          low: quote.regularMarketDayLow || quote.regularMarketPrice,
+          open: quote.regularMarketOpen || quote.regularMarketPrice,
+          volume: quote.regularMarketVolume || 0,
+          previousClose: quote.regularMarketPreviousClose || quote.regularMarketPrice,
+          fiftyTwoWeekHigh: quote.fiftyTwoWeekHigh || quote.regularMarketPrice,
+          fiftyTwoWeekLow: quote.fiftyTwoWeekLow || quote.regularMarketPrice,
+          name: quote.longName || quote.shortName || quote.symbol,
+          source: 'yahoo-finance',
+        };
+      }).filter((q: any) => q !== null);
+    };
+
+    let quotes;
+    try {
+      quotes = await yahooFinance.quote(symbols, {}, { validateResult: false } as any);
+    } catch (error: any) {
+      if (error.name === 'FailedYahooValidationError' && error.result) {
+        quotes = error.result;
+      } else if (error.name === 'FailedYahooValidationError') {
+        console.warn('Validation error but no result provided. Proceeding with empty quotes.');
+        quotes = [];
+      } else {
+        throw error;
+      }
+    }
+    return processQuotes(quotes);
   } catch (error) {
+    console.error('Error fetching multiquotes:', error);
     return [];
   }
 }
 
 export async function getMarketNews(symbol?: string): Promise<any[]> {
   try {
-    const params: any = { token: FINNHUB_KEY };
-    if (symbol) params.symbol = symbol;
-
-    const { data } = await axios.get(`${BASE_URL}/news`, { params });
-    return (data || []).map((item: any) => ({
-      id: String(item.id || Date.now()),
-      title: item.headline || '',
-      content: item.summary || '',
-      source: item.source || 'Finnhub',
-      url: item.url || '',
-      sentiment: item.category === 'positive' ? 0.7 : item.category === 'negative' ? -0.7 : 0,
-      sentimentLabel: item.category || 'neutral',
+    const query = symbol || 'market';
+    const result = await yahooFinance.search(query);
+    return (result.news || []).map((item: any) => ({
+      id: item.uuid || String(Date.now()),
+      title: item.title || '',
+      content: item.publisher || '',
+      source: item.publisher || 'Yahoo Finance',
+      url: item.link || '',
+      sentiment: 0,
+      sentimentLabel: 'neutral',
       symbols: [symbol || ''],
-      publishedAt: new Date(item.datetime * 1000).toISOString(),
-      createdAt: new Date(item.datetime * 1000).toISOString(),
+      publishedAt: new Date(item.providerPublishTime * 1000).toISOString(),
+      createdAt: new Date(item.providerPublishTime * 1000).toISOString(),
     }));
   } catch (error) {
+    console.error(`Error fetching news for ${symbol}:`, error);
     return [];
   }
 }

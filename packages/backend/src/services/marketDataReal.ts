@@ -2,21 +2,21 @@ import prisma from '../config/prisma';
 import { getRealStockQuote, searchStocks, getHistoricalCandles, getMultiQuotes, getMarketNews } from './realMarketData';
 
 const FALLBACK_STOCKS = [
-  { symbol: 'RELIANCE', name: 'Reliance Industries', sector: 'Energy' },
-  { symbol: 'TCS', name: 'Tata Consultancy Services', sector: 'IT' },
-  { symbol: 'HDFCBANK', name: 'HDFC Bank', sector: 'Banking' },
-  { symbol: 'INFY', name: 'Infosys', sector: 'IT' },
-  { symbol: 'ICICIBANK', name: 'ICICI Bank', sector: 'Banking' },
-  { symbol: 'SBIN', name: 'State Bank of India', sector: 'Banking' },
-  { symbol: 'ITC', name: 'ITC Limited', sector: 'Consumer' },
-  { symbol: 'BHARTIARTL', name: 'Bharti Airtel', sector: 'Telecom' },
-  { symbol: 'KOTAKBANK', name: 'Kotak Mahindra Bank', sector: 'Banking' },
-  { symbol: 'LT', name: 'Larsen & Toubro', sector: 'Infrastructure' },
-  { symbol: 'WIPRO', name: 'Wipro Limited', sector: 'IT' },
-  { symbol: 'TATAMOTORS', name: 'Tata Motors', sector: 'Automotive' },
-  { symbol: 'SUNPHARMA', name: 'Sun Pharma', sector: 'Healthcare' },
-  { symbol: 'MARUTI', name: 'Maruti Suzuki', sector: 'Automotive' },
-  { symbol: 'AXISBANK', name: 'Axis Bank', sector: 'Banking' },
+  { symbol: 'RELIANCE.NS', name: 'Reliance Industries', sector: 'Energy' },
+  { symbol: 'TCS.NS', name: 'Tata Consultancy Services', sector: 'IT' },
+  { symbol: 'HDFCBANK.NS', name: 'HDFC Bank', sector: 'Banking' },
+  { symbol: 'INFY.NS', name: 'Infosys', sector: 'IT' },
+  { symbol: 'ICICIBANK.NS', name: 'ICICI Bank', sector: 'Banking' },
+  { symbol: 'SBIN.NS', name: 'State Bank of India', sector: 'Banking' },
+  { symbol: 'ITC.NS', name: 'ITC Limited', sector: 'Consumer' },
+  { symbol: 'BHARTIARTL.NS', name: 'Bharti Airtel', sector: 'Telecom' },
+  { symbol: 'KOTAKBANK.NS', name: 'Kotak Mahindra Bank', sector: 'Banking' },
+  { symbol: 'LT.NS', name: 'Larsen & Toubro', sector: 'Infrastructure' },
+  { symbol: 'WIPRO.NS', name: 'Wipro Limited', sector: 'IT' },
+  { symbol: 'TATAMOTORS.NS', name: 'Tata Motors', sector: 'Automotive' },
+  { symbol: 'SUNPHARMA.NS', name: 'Sun Pharma', sector: 'Healthcare' },
+  { symbol: 'MARUTI.NS', name: 'Maruti Suzuki', sector: 'Automotive' },
+  { symbol: 'AXISBANK.NS', name: 'Axis Bank', sector: 'Banking' },
 ];
 
 export async function fetchStockFromAPI(symbol: string): Promise<any> {

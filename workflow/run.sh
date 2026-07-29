@@ -61,22 +61,31 @@ wait_for_user() {
     local file_path=$1; local stage_num=$2; local component=$3
     if [ "$INTERACTIVE" = true ]; then
         local comp_label="${component:+ (${component})}"
-        echo ""
-        echo -e "${MAGENTA}┌──────────────────────────────────────────────────────────────┐${NC}"
-        echo -e "${MAGENTA}│${NC}  ${BOLD}📄 REVIEW THIS FILE${comp_label}:${NC}"
-        echo -e "${MAGENTA}│${NC}  ${CYAN}$file_path${NC}"
-        echo -e "${MAGENTA}│${NC}"
-        echo -e "${MAGENTA}│${NC}  ${DIM}Open in editor or run: cat $file_path${NC}"
-        echo -e "${MAGENTA}│${NC}"
-        echo -e "${MAGENTA}│${NC}  ${GREEN}Press [Enter]${NC} to continue"
-        echo -e "${MAGENTA}│${NC}  ${RED}Press [q]${NC}    to quit"
-        echo -e "${MAGENTA}│${NC}"
-        echo -e "${MAGENTA}└──────────────────────────────────────────────────────────────┘${NC}"
-        echo ""
-        read -r -p "  ➤ " user_input </dev/tty
-        if [[ "$user_input" == "q" || "$user_input" == "Q" ]]; then
-            echo ""; echo -e "${YELLOW}  ⏸ Paused at Stage $stage_num${NC}"; exit 0
-        fi
+        while true; do
+            echo ""
+            echo -e "${MAGENTA}┌──────────────────────────────────────────────────────────────┐${NC}"
+            echo -e "${MAGENTA}│${NC}  ${BOLD}📄 REVIEW THIS FILE${comp_label}:${NC}"
+            echo -e "${MAGENTA}│${NC}  ${CYAN}$file_path${NC}"
+            echo -e "${MAGENTA}│${NC}"
+            echo -e "${MAGENTA}│${NC}  ${DIM}Open in editor or run: cat $file_path${NC}"
+            echo -e "${MAGENTA}│${NC}"
+            echo -e "${MAGENTA}│${NC}  ${GREEN}Press [Enter] or [n]${NC} to continue to next step"
+            echo -e "${MAGENTA}│${NC}  ${YELLOW}Press [b]${NC}        to go backward one step"
+            echo -e "${MAGENTA}│${NC}  ${RED}Press [q]${NC}        to quit"
+            echo -e "${MAGENTA}│${NC}"
+            echo -e "${MAGENTA}└──────────────────────────────────────────────────────────────┘${NC}"
+            echo ""
+            read -r -p "  ➤ " user_input </dev/tty
+            case "$user_input" in
+                q|Q) echo ""; echo -e "${YELLOW}  ⏸ Paused at Stage $stage_num${NC}"; exit 0 ;;
+                b|B) return 1 ;;
+                "") return 0 ;;
+                n|N) return 0 ;;
+                *) echo -e "${RED}Invalid input.${NC}" ;;
+            esac
+        done
+    else
+        return 0
     fi
 }
 
@@ -572,17 +581,35 @@ generate_all_stages() {
     local output_dir=$1; local component_label=$2
     mkdir -p "$output_dir"
 
-    print_stage_header "0" "Project Brief" "📋"
-    generate_project_brief "$output_dir/00-project-brief.md"
-    print_file_info "$output_dir/00-project-brief.md"
-    wait_for_user "$output_dir/00-project-brief.md" 0 "$component_label"
+    local stage_names=("Project Brief" "Requirement Analysis" "Product Requirements Document" "High Level Design" "Low Level Design" "Implementation Plan" "Code Implementation Guide" "Code Review Guide" "QA & Testing Guide" "UI/UX Design")
+    local stage_icons=("📋" "📝" "📄" "🏗️" "🔧" "📅" "💻" "🔍" "🧪" "🎨")
 
-    for i in $(seq 1 9); do
-        local stage_names=("" "Requirement Analysis" "Product Requirements Document" "High Level Design" "Low Level Design" "Implementation Plan" "Code Implementation Guide" "Code Review Guide" "QA & Testing Guide" "UI/UX Design")
-        local stage_icons=("" "📝" "📄" "🏗️" "🔧" "📅" "💻" "🔍" "🧪" "🎨")
-        print_stage_header "$i" "${stage_names[$i]}" "${stage_icons[$i]}"
-        generate_stage "$i" "$output_dir"
-        wait_for_user "$output_dir/$(printf '%02d' $i)-*.md" "$i" "$component_label"
+    local i=0
+    while [ $i -le 9 ]; do
+        if [ $i -eq 0 ]; then
+            print_stage_header "$i" "${stage_names[$i]}" "${stage_icons[$i]}"
+            generate_project_brief "$output_dir/00-project-brief.md"
+            print_file_info "$output_dir/00-project-brief.md"
+            wait_for_user "$output_dir/00-project-brief.md" "$i" "$component_label"
+            local user_choice=$?
+        else
+            print_stage_header "$i" "${stage_names[$i]}" "${stage_icons[$i]}"
+            generate_stage "$i" "$output_dir"
+            wait_for_user "$output_dir/$(printf '%02d' $i)-*.md" "$i" "$component_label"
+            local user_choice=$?
+        fi
+
+        if [ "$user_choice" -eq 1 ]; then
+            # User wants to go back
+            if [ $i -gt 0 ]; then
+                i=$((i-1))
+            else
+                echo -e "${YELLOW}  Already at the first stage.${NC}"
+            fi
+        else
+            # User wants to go forward
+            i=$((i+1))
+        fi
     done
 }
 

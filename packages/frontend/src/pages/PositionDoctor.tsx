@@ -10,6 +10,8 @@ import {
   TrendingUp, BarChart3, Layers, Zap, Shield, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import CandlestickChart from '../components/CandlestickChart';
+import { useMarketStore } from '../stores/marketStore';
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
@@ -26,6 +28,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function PositionDoctor() {
+  const { stocks: livePrices } = useMarketStore();
   const [summary, setSummary] = useState<any>(null);
   const [agentResult, setAgentResult] = useState<any>(null);
   const [historyData, setHistoryData] = useState<any[]>([]);
@@ -170,7 +173,12 @@ export default function PositionDoctor() {
 
       {/* Position Cards */}
       <div className="space-y-4">
-        {displayPositions.map((pos: any) => {
+        {displayPositions.map((p: any) => {
+          const livePrice = livePrices[p.symbol]?.price || p.currentPrice || p.avgPrice;
+          const pnl = (livePrice - p.avgPrice) * p.quantity;
+          const pnlPercent = p.avgPrice > 0 ? ((livePrice - p.avgPrice) / p.avgPrice) * 100 : 0;
+          const pos = { ...p, currentPrice: livePrice, pnl, pnlPercent };
+
           const history = historyData.find((h: any) => h.symbol === pos.symbol);
           const bars = history?.bars || [];
           const ind = history?.indicators || {};
@@ -181,6 +189,14 @@ export default function PositionDoctor() {
           const currentRSI = ind.rsi?.[ind.rsi.length - 1] || 50;
           const currentMACD = ind.macd?.[ind.macd.length - 1] || 0;
           const currentSignal = ind.macdSignal?.[ind.macdSignal.length - 1] || 0;
+
+          const candleData = bars.map((b: any) => ({
+            time: b.date,
+            open: b.open,
+            high: b.high,
+            low: b.low,
+            close: b.close
+          }));
 
           const chartData = bars.map((b: any, idx: number) => ({
             date: b.date.slice(5),
@@ -314,6 +330,9 @@ export default function PositionDoctor() {
                       <TrendingUp size={14} className="text-blue-400" />
                       Price Action & Technical Overlays ({chartDays} Days)
                     </h3>
+                    <div className="mb-4">
+                      <CandlestickChart data={candleData} height={280} />
+                    </div>
                     <div className="h-72">
                       <ResponsiveContainer width="100%" height="100%">
                         <ComposedChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>

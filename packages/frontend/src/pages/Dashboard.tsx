@@ -1,14 +1,50 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
-import { Stock } from '../types';
+import { useMarketStore } from '../stores/marketStore';
 import {
   TrendingUp, TrendingDown, Activity, Bot, BarChart3, Gamepad2,
   Newspaper, Search, Network, ArrowUpRight, Zap, Shield, Clock,
 } from 'lucide-react';
+import CandlestickChart from '../components/CandlestickChart';
+
+function FeaturedChart({ symbol, livePrice }: { symbol: string, livePrice?: number }) {
+  const [data, setData] = useState<any[]>([]);
+  useEffect(() => {
+    if (!symbol) return;
+    api.get(`/position-doctor/history/${symbol}?days=90`)
+      .then(res => {
+        if (res.data?.bars) {
+          setData(res.data.bars.map((b: any) => ({
+            time: b.date,
+            open: b.open,
+            high: b.high,
+            low: b.low,
+            close: b.close
+          })));
+        }
+      })
+      .catch(console.error);
+  }, [symbol]);
+
+  useEffect(() => {
+    if (livePrice && data.length > 0) {
+      setData(prev => {
+        const last = { ...prev[prev.length - 1] };
+        last.close = livePrice;
+        if (livePrice > last.high) last.high = livePrice;
+        if (livePrice < last.low) last.low = livePrice;
+        return [...prev.slice(0, -1), last];
+      });
+    }
+  }, [livePrice]);
+
+  if (data.length === 0) return <div className="h-64 flex items-center justify-center text-slate-500">Loading chart...</div>;
+  return <CandlestickChart data={data} height={300} />;
+}
 
 export default function Dashboard() {
-  const [stocks, setStocks] = useState<Stock[]>([]);
+  const { stocks: storeStocks, setStocks } = useMarketStore();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,10 +55,14 @@ export default function Dashboard() {
       } catch (error) { console.error(error); }
       finally { setLoading(false); }
     };
-    fetchStocks();
-    const interval = setInterval(fetchStocks, 3000);
-    return () => clearInterval(interval);
+    if (Object.keys(storeStocks).length === 0) {
+      fetchStocks();
+    } else {
+      setLoading(false);
+    }
   }, []);
+
+  const stocks = useMemo(() => Object.values(storeStocks), [storeStocks]);
 
   const features = [
     { title: 'Watchlist', desc: 'Track stocks in real-time', icon: Activity, path: '/watchlist', gradient: 'from-blue-500 to-cyan-500', shadow: 'shadow-blue-500/10' },
@@ -79,6 +119,20 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Featured Chart */}
+      {!loading && stocks.length > 0 && (
+        <div className="glass-card p-5 animate-fade-up">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+              <TrendingUp size={18} className="text-blue-400" />
+              Market Overview ({stocks[0]?.symbol})
+            </h2>
+            <Link to={`/stock/${stocks[0]?.symbol}`} className="text-xs text-blue-400 hover:text-blue-300">View Full Details →</Link>
+          </div>
+          <FeaturedChart symbol={stocks[0]?.symbol} livePrice={storeStocks[stocks[0]?.symbol]?.price} />
+        </div>
+      )}
+
       {/* Stock Grid */}
       <div>
         <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
@@ -96,9 +150,10 @@ export default function Dashboard() {
             ))
           ) : (
             stocks.slice(0, 10).map((stock) => (
-              <div
+              <Link
                 key={stock.symbol}
-                className={`glass-card p-4 cursor-pointer group ${
+                to={`/stock/${stock.symbol}`}
+                className={`glass-card p-4 cursor-pointer group block ${
                   stock.changePercent >= 0 ? 'hover:border-green-500/30' : 'hover:border-red-500/30'
                 }`}
               >
@@ -121,7 +176,7 @@ export default function Dashboard() {
                     style={{ width: `${Math.min(100, Math.abs(stock.changePercent) * 20)}%` }}
                   />
                 </div>
-              </div>
+              </Link>
             ))
           )}
         </div>

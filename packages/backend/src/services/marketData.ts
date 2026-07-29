@@ -1,21 +1,50 @@
 // Mock market data for development
 const mockStocks: Record<string, { price: number; change: number; changePercent: number; high: number; low: number; volume: number; fiftyTwoWeekHigh: number; fiftyTwoWeekLow: number }> = {
-  'RELIANCE': { price: 2450.50, change: 25.30, changePercent: 1.04, high: 2465.00, low: 2420.00, volume: 1500000, fiftyTwoWeekHigh: 2850.00, fiftyTwoWeekLow: 2180.00 },
-  'TCS': { price: 3890.75, change: -15.20, changePercent: -0.39, high: 3920.00, low: 3875.00, volume: 800000, fiftyTwoWeekHigh: 4250.00, fiftyTwoWeekLow: 3200.00 },
-  'HDFCBANK': { price: 1675.30, change: 12.45, changePercent: 0.75, high: 1685.00, low: 1660.00, volume: 2000000, fiftyTwoWeekHigh: 1790.00, fiftyTwoWeekLow: 1450.00 },
-  'INFY': { price: 1520.80, change: -8.50, changePercent: -0.56, high: 1535.00, low: 1510.00, volume: 1200000, fiftyTwoWeekHigh: 1680.00, fiftyTwoWeekLow: 1250.00 },
-  'ICICIBANK': { price: 1125.45, change: 18.90, changePercent: 1.71, high: 1135.00, low: 1105.00, volume: 1800000, fiftyTwoWeekHigh: 1260.00, fiftyTwoWeekLow: 950.00 },
-  'SBIN': { price: 785.20, change: 5.60, changePercent: 0.72, high: 792.00, low: 778.00, volume: 3000000, fiftyTwoWeekHigh: 910.00, fiftyTwoWeekLow: 555.00 },
-  'ITC': { price: 438.90, change: -2.15, changePercent: -0.49, high: 442.00, low: 436.00, volume: 5000000, fiftyTwoWeekHigh: 500.00, fiftyTwoWeekLow: 390.00 },
-  'BHARTIARTL': { price: 1345.60, change: 22.80, changePercent: 1.72, high: 1355.00, low: 1320.00, volume: 900000, fiftyTwoWeekHigh: 1580.00, fiftyTwoWeekLow: 1080.00 },
-  'KOTAKBANK': { price: 1780.25, change: -5.30, changePercent: -0.30, high: 1795.00, low: 1770.00, volume: 700000, fiftyTwoWeekHigh: 1950.00, fiftyTwoWeekLow: 1600.00 },
-  'LT': { price: 3450.80, change: 35.40, changePercent: 1.04, high: 3480.00, low: 3420.00, volume: 600000, fiftyTwoWeekHigh: 3950.00, fiftyTwoWeekLow: 2900.00 },
-  'WIPRO': { price: 445.30, change: -3.20, changePercent: -0.71, high: 450.00, low: 442.00, volume: 1500000, fiftyTwoWeekHigh: 550.00, fiftyTwoWeekLow: 380.00 },
-  'TATAMOTORS': { price: 985.40, change: 12.60, changePercent: 1.30, high: 995.00, low: 970.00, volume: 2500000, fiftyTwoWeekHigh: 1180.00, fiftyTwoWeekLow: 620.00 },
-  'SUNPHARMA': { price: 1620.75, change: 8.90, changePercent: 0.55, high: 1635.00, low: 1608.00, volume: 800000, fiftyTwoWeekHigh: 1750.00, fiftyTwoWeekLow: 1200.00 },
-  'MARUTI': { price: 12450.60, change: 125.40, changePercent: 1.02, high: 12550.00, low: 12300.00, volume: 300000, fiftyTwoWeekHigh: 13600.00, fiftyTwoWeekLow: 9800.00 },
-  'AXISBANK': { price: 1180.90, change: 15.30, changePercent: 1.31, high: 1195.00, low: 1165.00, volume: 1100000, fiftyTwoWeekHigh: 1340.00, fiftyTwoWeekLow: 920.00 },
+  'RELIANCE.NS': { price: 2450.50, change: 25.30, changePercent: 1.04, high: 2465.00, low: 2420.00, volume: 1500000, fiftyTwoWeekHigh: 2850.00, fiftyTwoWeekLow: 2180.00 },
+  'TCS.NS': { price: 3890.75, change: -15.20, changePercent: -0.39, high: 3920.00, low: 3875.00, volume: 800000, fiftyTwoWeekHigh: 4250.00, fiftyTwoWeekLow: 3200.00 },
+  'HDFCBANK.NS': { price: 1675.30, change: 12.45, changePercent: 0.75, high: 1685.00, low: 1660.00, volume: 2000000, fiftyTwoWeekHigh: 1790.00, fiftyTwoWeekLow: 1450.00 },
+  'INFY.NS': { price: 1520.80, change: -8.50, changePercent: -0.56, high: 1535.00, low: 1510.00, volume: 1200000, fiftyTwoWeekHigh: 1680.00, fiftyTwoWeekLow: 1250.00 },
+  'ICICIBANK.NS': { price: 1125.45, change: 18.90, changePercent: 1.71, high: 1135.00, low: 1105.00, volume: 1800000, fiftyTwoWeekHigh: 1260.00, fiftyTwoWeekLow: 950.00 },
+  'SBIN.NS': { price: 785.20, change: 5.60, changePercent: 0.72, high: 792.00, low: 778.00, volume: 3000000, fiftyTwoWeekHigh: 910.00, fiftyTwoWeekLow: 555.00 },
+  'ITC.NS': { price: 438.90, change: -2.15, changePercent: -0.49, high: 442.00, low: 436.00, volume: 5000000, fiftyTwoWeekHigh: 500.00, fiftyTwoWeekLow: 390.00 },
+  'BHARTIARTL.NS': { price: 1345.60, change: 22.80, changePercent: 1.72, high: 1355.00, low: 1320.00, volume: 900000, fiftyTwoWeekHigh: 1580.00, fiftyTwoWeekLow: 1080.00 },
+  'KOTAKBANK.NS': { price: 1780.25, change: -5.30, changePercent: -0.30, high: 1795.00, low: 1770.00, volume: 700000, fiftyTwoWeekHigh: 1950.00, fiftyTwoWeekLow: 1600.00 },
+  'LT.NS': { price: 3450.80, change: 35.40, changePercent: 1.04, high: 3480.00, low: 3420.00, volume: 600000, fiftyTwoWeekHigh: 3950.00, fiftyTwoWeekLow: 2900.00 },
+  'WIPRO.NS': { price: 445.30, change: -3.20, changePercent: -0.71, high: 450.00, low: 442.00, volume: 1500000, fiftyTwoWeekHigh: 550.00, fiftyTwoWeekLow: 380.00 },
+  'TATAMOTORS.NS': { price: 985.40, change: 12.60, changePercent: 1.30, high: 995.00, low: 970.00, volume: 2500000, fiftyTwoWeekHigh: 1180.00, fiftyTwoWeekLow: 620.00 },
+  'SUNPHARMA.NS': { price: 1620.75, change: 8.90, changePercent: 0.55, high: 1635.00, low: 1608.00, volume: 800000, fiftyTwoWeekHigh: 1750.00, fiftyTwoWeekLow: 1200.00 },
+  'MARUTI.NS': { price: 12450.60, change: 125.40, changePercent: 1.02, high: 12550.00, low: 12300.00, volume: 300000, fiftyTwoWeekHigh: 13600.00, fiftyTwoWeekLow: 9800.00 },
+  'AXISBANK.NS': { price: 1180.90, change: 15.30, changePercent: 1.31, high: 1195.00, low: 1165.00, volume: 1100000, fiftyTwoWeekHigh: 1340.00, fiftyTwoWeekLow: 920.00 },
 };
+
+// Hydrate mockStocks with real prices initially and every 60 seconds
+setTimeout(async () => {
+  const { fetchAllStocks } = await import('./marketDataReal');
+  const hydrate = async () => {
+    try {
+      const realStocks = await fetchAllStocks();
+      realStocks.forEach(stock => {
+        if (stock && stock.symbol && mockStocks[stock.symbol]) {
+          mockStocks[stock.symbol] = {
+            ...mockStocks[stock.symbol],
+            price: stock.price,
+            change: stock.change,
+            changePercent: stock.changePercent,
+            high: stock.high,
+            low: stock.low,
+            volume: stock.volume,
+            fiftyTwoWeekHigh: stock.fiftyTwoWeekHigh,
+            fiftyTwoWeekLow: stock.fiftyTwoWeekLow
+          };
+        }
+      });
+    } catch (e) {
+      console.error('Failed to hydrate real stocks', e);
+    }
+  };
+  hydrate();
+  setInterval(hydrate, 60000);
+}, 1000);
 
 export const getStockPrice = (symbol: string) => {
   return mockStocks[symbol] || { price: 0, change: 0, changePercent: 0, high: 0, low: 0, volume: 0, fiftyTwoWeekHigh: 0, fiftyTwoWeekLow: 0 };

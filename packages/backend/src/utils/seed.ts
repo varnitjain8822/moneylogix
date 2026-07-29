@@ -29,7 +29,7 @@ async function main() {
   });
 
   // Add symbols to watchlist
-  const symbols = ['RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'ICICIBANK'];
+  const symbols = ['RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'INFY.NS', 'ICICIBANK.NS'];
   for (const symbol of symbols) {
     await prisma.watchlistSymbol.create({
       data: { watchlistId: watchlist.id, symbol },

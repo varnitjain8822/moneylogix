@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import api from '../services/api';
 import { connectSocket, disconnectSocket } from '../services/socket';
 import { Bot, TrendingUp, TrendingDown, DollarSign, Shield, Activity, Clock, Sparkles, Brain, AlertCircle, Search, Bell, RefreshCw, Wallet, Target, Lightbulb, Newspaper, ChevronRight, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, BarChart, Bar } from 'recharts';
+import { useMarketStore } from '../stores/marketStore';
 
 type MarketStatus = 'OPEN' | 'CLOSED' | 'PRE_MARKET' | 'AFTER_HOURS';
 type Sentiment = 'BULLISH' | 'BEARISH' | 'NEUTRAL';
@@ -51,6 +52,7 @@ interface Prediction {
 }
 
 export default function AIAdvisor() {
+  const { stocks: livePrices } = useMarketStore();
   const [marketStatus] = useState<MarketStatus>('OPEN');
   const [marketIntel, setMarketIntel] = useState<MarketIntel | null>(null);
   const [aiRecommendations, setAiRecommendations] = useState<AIRecommendation[]>([]);
@@ -86,6 +88,23 @@ export default function AIAdvisor() {
     setCachedRequests(prev => ({ ...prev, [key]: { data, timestamp: Date.now() } }));
   }, []);
 
+  const liveStats = useMemo(() => {
+    if (!paperSummary || !paperSummary.positions) return { totalValue: paperSummary?.totalValue || 0, totalPnl: paperSummary?.totalPnl || 0 };
+    let currentPositionsValue = 0;
+    let totalInvested = 0;
+    
+    paperSummary.positions.forEach((p: any) => {
+      const currentPrice = livePrices[p.symbol]?.price || p.avgPrice || 0;
+      currentPositionsValue += currentPrice * p.quantity;
+      totalInvested += (p.avgPrice || 0) * p.quantity;
+    });
+    
+    return {
+      totalValue: (paperSummary.balance || 0) + currentPositionsValue,
+      totalPnl: currentPositionsValue - totalInvested,
+    };
+  }, [paperSummary, livePrices]);
+
   const fetchAllData = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -98,13 +117,13 @@ export default function AIAdvisor() {
       const perfRes: any = await api.get('/analytics/performance?days=30').catch(() => null);
       const riskRes: any = await api.get('/analytics/risk').catch(() => null);
 
-      const stocks = marketsRes.data;
-      setPortfolioData(portfolioRes);
-      setPaperSummary(paperRes);
+      const stocks = marketsRes.data || [];
+      setPortfolioData(portfolioRes?.data || portfolioRes);
+      setPaperSummary(paperRes?.data || paperRes);
       setTrades(tradesRes.data || tradesRes);
       setNews(newsRes.data || newsRes);
-      setPerformanceData(perfRes);
-      setRiskMetrics(riskRes);
+      setPerformanceData(perfRes?.data || perfRes);
+      setRiskMetrics(riskRes?.data || riskRes);
 
       // Market Intel
       const indices = await api.get('/market/indices').catch(() => ({ data: [] }));
@@ -129,10 +148,12 @@ export default function AIAdvisor() {
       // Insights
       const sectorData = portfolioRes?.sectorAllocation || {};
       const sortedSectors = Object.entries(sectorData).sort((a, b) => (b[1] as number) - (a[1] as number));
+      const pCount = paperRes?.data?.positionsCount || paperRes?.positionsCount || 0;
+      const pBalance = paperRes?.data?.balance || paperRes?.balance || 0;
       setInsights([
         { title: 'Strongest Sector', description: `${sortedSectors[0]?.[0] || 'N/A'} leading allocation at ${((sortedSectors[0]?.[1] as number) || 0).toFixed(1)}%`, confidence: 87, icon: TrendingUp, color: 'text-green-400' },
-        { title: paperRes?.positionsCount && paperRes.positionsCount > 5 ? 'High Activity' : 'Conservative Stance', description: paperRes?.positionsCount ? `${paperRes.positionsCount} active paper positions detected` : 'No active paper positions', confidence: 92, icon: Activity, color: 'text-blue-400' },
-        { title: 'Paper Balance', description: `₹${(paperRes?.balance || 0).toLocaleString()} available buying power`, confidence: 100, icon: Wallet, color: 'text-yellow-400' },
+        { title: pCount > 5 ? 'High Activity' : 'Conservative Stance', description: pCount ? `${pCount} active paper positions detected` : 'No active paper positions', confidence: 92, icon: Activity, color: 'text-blue-400' },
+        { title: 'Paper Balance', description: `₹${pBalance.toLocaleString('en-IN')}`, confidence: 100, icon: Wallet, color: 'text-yellow-400' },
         { title: 'Risk Exposure', description: riskMetrics ? `${riskMetrics.diversificationScore}% diversified across ${Object.keys(riskMetrics.sectorAllocation || {}).length} sectors` : 'Analyzing risk profile...', confidence: 78, icon: Shield, color: 'text-purple-400' },
       ]);
 
@@ -148,7 +169,7 @@ export default function AIAdvisor() {
       // Notifications
       setNotifications([
         { id: 1, type: 'info', message: 'Market is currently open - real-time data active', time: 'Now', read: false },
-        { id: 2, type: 'success', message: `Paper trading summary synced: ₹${(paperRes?.totalValue || 0).toLocaleString()} total value`, time: 'Just now', read: false },
+        { id: 2, type: 'success', message: `Paper trading summary synced: ₹${(paperRes?.data?.totalValue || paperRes?.totalValue || 0).toLocaleString('en-IN')} total value`, time: 'Just now', read: false },
         { id: 3, type: 'warning', message: riskMetrics?.diversificationScore < 50 ? 'Portfolio concentration risk detected' : 'Portfolio within healthy risk parameters', time: '2m ago', read: false },
       ]);
       setUnreadCount(notifications.filter(n => !n.read).length);
@@ -187,7 +208,7 @@ export default function AIAdvisor() {
 
   useEffect(() => {
     socketRef.current = connectSocket();
-    socketRef.current.on('price_update', (update: any) => {
+    socketRef.current.on('price-update', (update: any) => {
       setCached(`stock_${update.symbol}`, update);
     });
     return () => { if (socketRef.current) disconnectSocket(); };
@@ -402,10 +423,10 @@ export default function AIAdvisor() {
           {/* Portfolio Summary Row */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { label: 'Portfolio Value', value: paperSummary ? `₹${paperSummary.totalValue.toLocaleString()}` : '₹--', icon: Wallet, color: 'text-white' },
-              { label: 'Today P&L', value: paperSummary ? `₹${paperSummary.totalPnl.toFixed(0)}` : '₹--', icon: TrendingUp, color: (paperSummary?.totalPnl || 0) >= 0 ? 'text-green-400' : 'text-red-400' },
-              { label: 'Cash Balance', value: paperSummary ? `₹${paperSummary.balance.toLocaleString()}` : '₹--', icon: DollarSign, color: 'text-yellow-400' },
-              { label: 'Active Positions', value: paperSummary?.positionsCount ? paperSummary.positionsCount.toString() : '0', icon: Target, color: 'text-blue-400' },
+              { label: 'Total Value (Live)', value: `₹${(liveStats.totalValue || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, icon: Wallet, color: 'text-white' },
+              { label: 'Live P&L', value: `${liveStats.totalPnl >= 0 ? '+' : ''}₹${(liveStats.totalPnl || 0).toFixed(0)}`, icon: TrendingUp, color: (liveStats.totalPnl || 0) >= 0 ? 'text-green-400' : 'text-red-400' },
+              { label: 'Cash Balance', value: paperSummary?.balance != null ? `₹${paperSummary.balance.toLocaleString('en-IN', { maximumFractionDigits: 0 })}` : '₹--', icon: DollarSign, color: 'text-yellow-400' },
+              { label: 'Active Positions', value: paperSummary?.positionsCount != null ? paperSummary.positionsCount.toString() : '0', icon: Target, color: 'text-blue-400' },
             ].map((stat, i) => (
               <div key={i} className="glass-card p-4">
                 <div className="flex items-center gap-2 mb-2">

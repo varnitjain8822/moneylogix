@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import api from '../services/api';
-import { connectSocket, disconnectSocket } from '../services/socket';
+import { useMarketStore } from '../stores/marketStore';
 import { DollarSign, TrendingUp, TrendingDown, Activity, Clock, Target, Search, ShoppingCart, X, RefreshCw, XCircle } from 'lucide-react';
 import BuyPanel from '../components/BuyPanel';
 import SellPanel from '../components/SellPanel';
@@ -13,7 +13,6 @@ export default function PaperTrading() {
   const [stocks, setStocks] = useState<StockRow[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [wallet, setWallet] = useState<any>(null);
-  const [portfolio, setPortfolio] = useState<any>(null);
   const [positions, setPositions] = useState<any[]>([]);
   const [selectedStock, setSelectedStock] = useState<any>(null);
   const [marketStats, setMarketStats] = useState<any>(null);
@@ -24,11 +23,10 @@ export default function PaperTrading() {
 
   const fetchAllData = useCallback(async () => {
     try {
-      const [stocksRes, ordersRes, summaryRes, portfolioRes] = await Promise.all([
+      const [stocksRes, ordersRes, summaryRes] = await Promise.all([
         api.get('/market/stocks'),
         api.get('/paper/orders').catch(() => ({ orders: [], total: 0 })),
         api.get('/paper/summary').catch(() => null),
-        api.get('/portfolios/analytics').catch(() => null),
       ]);
 
       setStocks(stocksRes.data || []);
@@ -44,9 +42,7 @@ export default function PaperTrading() {
         setPositions([]);
       }
 
-      if (portfolioRes && portfolioRes.data) {
-        setPortfolio(portfolioRes.data);
-      }
+
 
       const s = stocksRes.data || [];
       setMarketStats({
@@ -58,24 +54,53 @@ export default function PaperTrading() {
     finally { setLoading(false); }
   }, []);
 
+  const { stocks: livePrices, subscribe, unsubscribe } = useMarketStore();
+
+  const displayStocks = useMemo(() => {
+    return stocks.map(s => {
+      const live = livePrices[s.symbol];
+      return live ? { ...s, price: live.price, change: live.change, changePercent: live.changePercent } : s;
+    });
+  }, [stocks, livePrices]);
+
+  const liveStats = useMemo(() => {
+    if (!wallet || positions.length === 0) return { totalValue: wallet?.balance || 0, totalPnl: 0 };
+    let currentPositionsValue = 0;
+    let totalInvested = 0;
+    
+    positions.forEach((p: any) => {
+      const currentPrice = livePrices[p.symbol]?.price || p.avgPrice || 0;
+      currentPositionsValue += currentPrice * p.quantity;
+      totalInvested += (p.avgPrice || 0) * p.quantity;
+    });
+    
+    return {
+      totalValue: wallet.balance + currentPositionsValue,
+      totalPnl: currentPositionsValue - totalInvested,
+    };
+  }, [wallet, positions, livePrices]);
+
   useEffect(() => {
     fetchAllData();
-    const socket = connectSocket();
-    const symbols = ['RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'ICICIBANK', 'SBIN', 'ITC', 'BHARTIARTL', 'KOTAKBANK', 'LT', 'WIPRO', 'TATAMOTORS', 'SUNPHARMA', 'MARUTI', 'AXISBANK'];
-    socket.on('connect', () => {
-      socket.emit('subscribe-watchlist', symbols);
-    });
-    if (socket.connected) {
-      socket.emit('subscribe-watchlist', symbols);
-    }
-    socket.on('price-update', (update: any) => {
-      if (update && update.symbol) {
-        setStocks((prev: StockRow[]) => prev.map(s => s.symbol === update.symbol ? { ...s, price: update.price, change: update.change, changePercent: update.changePercent, high: update.high, low: update.low, volume: update.volume } : s));
-        setSelectedStock((prev: any) => prev && prev.symbol === update.symbol ? { ...prev, price: update.price, change: update.change, changePercent: update.changePercent } : prev);
-      }
-    });
-    return () => { disconnectSocket(); };
   }, []);
+
+  useEffect(() => {
+    if (stocks.length > 0) {
+      const symbols = stocks.map(s => s.symbol);
+      subscribe(symbols);
+      return () => unsubscribe(symbols);
+    }
+  }, [stocks.length, subscribe, unsubscribe]);
+
+  // Update selected stock with live price
+  useEffect(() => {
+    if (selectedStock && livePrices[selectedStock.symbol]) {
+      const live = livePrices[selectedStock.symbol];
+      if (live.price !== selectedStock.price) {
+        setSelectedStock((prev: any) => prev ? { ...prev, ...live } : prev);
+      }
+    }
+  }, [livePrices, selectedStock?.symbol]);
 
   const handleCancelOrder = async (orderId: string) => {
     setCancellingId(orderId);
@@ -129,20 +154,22 @@ export default function PaperTrading() {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <div className="glass-card p-4 bg-gradient-to-br from-green-500/10 to-emerald-500/5 border border-green-500/20">
-          <div className="flex items-center gap-2 mb-1"><DollarSign size={14} className="text-green-400" /><span className="text-xs text-slate-400">Buying Power</span></div>
-          <p className="text-xl font-bold text-green-400">₹{(wallet?.balance || 0)?.toLocaleString('en-IN')}</p>
+          <div className="flex items-center gap-2 mb-1"><DollarSign size={14} className="text-green-400" /><span className="text-xs text-slate-400">Total Value (Live)</span></div>
+          <p className="text-xl font-bold text-green-400">₹{(liveStats.totalValue || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
         </div>
         <div className="glass-card p-4">
-          <div className="flex items-center gap-2 mb-1"><Activity size={14} className="text-blue-400" /><span className="text-xs text-slate-400">Open Orders</span></div>
-          <p className="text-xl font-bold text-white">{orders.filter((o: any) => o.status === 'PENDING').length}</p>
+          <div className="flex items-center gap-2 mb-1"><Activity size={14} className={liveStats.totalPnl >= 0 ? "text-green-400" : "text-red-400"} /><span className="text-xs text-slate-400">Live P&L</span></div>
+          <p className={`text-xl font-bold ${liveStats.totalPnl >= 0 ? "text-green-400" : "text-red-400"}`}>
+            {liveStats.totalPnl >= 0 ? '+' : ''}₹{liveStats.totalPnl.toFixed(0)}
+          </p>
         </div>
         <div className="glass-card p-4">
           <div className="flex items-center gap-2 mb-1"><Target size={14} className="text-purple-400" /><span className="text-xs text-slate-400">Positions</span></div>
-          <p className="text-xl font-bold text-white">{positions.length || portfolio?.paperPositionsCount || 0}</p>
+          <p className="text-xl font-bold text-white">{positions.length}</p>
         </div>
         <div className="glass-card p-4">
-          <div className="flex items-center gap-2 mb-1"><Clock size={14} className="text-yellow-400" /><span className="text-xs text-slate-400">Today's Trades</span></div>
-          <p className="text-xl font-bold text-white">{filledOrders.length}</p>
+          <div className="flex items-center gap-2 mb-1"><ShoppingCart size={14} className="text-yellow-400" /><span className="text-xs text-slate-400">Buying Power</span></div>
+          <p className="text-xl font-bold text-white">₹{(wallet?.balance || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
         </div>
       </div>
 
@@ -176,18 +203,18 @@ export default function PaperTrading() {
                     <span className="text-white font-bold text-lg">{selectedStock.symbol}</span>
                     <span className="text-slate-400 text-sm ml-2">{selectedStock.name || ''}</span>
                   </div>
-                  <span className={`text-lg font-bold font-mono ${selectedStock.changePercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    ₹{selectedStock.price?.toFixed(2)}
+                  <span className={`text-lg font-bold font-mono ${(selectedStock.changePercent || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    ₹{(selectedStock.price || 0).toFixed(2)}
                   </span>
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${selectedStock.changePercent >= 0 ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
-                    {selectedStock.changePercent >= 0 ? '+' : ''}{selectedStock.changePercent?.toFixed(2)}%
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${(selectedStock.changePercent || 0) >= 0 ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
+                    {(selectedStock.changePercent || 0) >= 0 ? '+' : ''}{(selectedStock.changePercent || 0).toFixed(2)}%
                   </span>
                 </div>
                 <button onClick={() => setSelectedStock(null)} className="p-1 rounded-lg hover:bg-white/10 text-slate-400"><X size={16} /></button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <BuyPanel symbol={selectedStock.symbol} currentPrice={selectedStock.price} onOrderPlaced={fetchAllData} />
-                <SellPanel symbol={selectedStock.symbol} currentPrice={selectedStock.price} currentQuantity={getPositionForSymbol(selectedStock.symbol)?.quantity || 0} avgPrice={getPositionForSymbol(selectedStock.symbol)?.avgPrice || selectedStock.price * 0.95} onOrderPlaced={fetchAllData} />
+                <BuyPanel symbol={selectedStock.symbol} currentPrice={selectedStock.price || 0} onOrderPlaced={fetchAllData} />
+                <SellPanel symbol={selectedStock.symbol} currentPrice={selectedStock.price || 0} currentQuantity={getPositionForSymbol(selectedStock.symbol)?.quantity || 0} avgPrice={getPositionForSymbol(selectedStock.symbol)?.avgPrice || (selectedStock.price || 0) * 0.95} onOrderPlaced={fetchAllData} />
               </div>
             </div>
           ) : (
@@ -196,13 +223,13 @@ export default function PaperTrading() {
               <h3 className="text-white font-semibold mb-2">Search for a stock to trade</h3>
               <p className="text-slate-400 text-sm mb-4">Use the search bar above or browse the stock list below</p>
               <div className="flex flex-wrap gap-2 justify-center">
-                {stocks.slice(0, 10).map((s: StockRow) => (
+                {displayStocks.slice(0, 10).map((s: StockRow) => (
                   <button
                     key={s.symbol}
                     onClick={() => setSelectedStock(s)}
                     className="px-3 py-1.5 rounded-lg bg-white/5 text-sm text-white hover:bg-white/10 transition-colors font-mono"
                   >
-                    {s.symbol} <span className="text-slate-400">₹{s.price.toFixed(2)}</span>
+                    {s.symbol} <span className="text-slate-400">₹{(s.price || 0).toFixed(2)}</span>
                   </button>
                 ))}
               </div>
@@ -212,7 +239,7 @@ export default function PaperTrading() {
           <div className="glass-card overflow-hidden">
             <div className="p-3 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border-color)' }}>
               <h3 className="font-semibold text-white text-sm">Market Watchlist</h3>
-              <span className="text-xs text-slate-400">{stocks.length} stocks</span>
+              <span className="text-xs text-slate-400">{displayStocks.length} stocks</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -226,17 +253,17 @@ export default function PaperTrading() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {stocks.map((s: StockRow) => (
+                  {displayStocks.map((s: StockRow) => (
                     <tr key={s.symbol} className="hover:bg-white/[0.03] transition-colors cursor-pointer" onClick={() => setSelectedStock(s)}>
                       <td className="p-3 font-semibold text-white">{s.symbol}</td>
-                      <td className="p-3 text-right font-mono text-white">₹{s.price.toFixed(2)}</td>
+                      <td className="p-3 text-right font-mono text-white">₹{(s.price || 0).toFixed(2)}</td>
                       <td className="p-3 text-right">
-                        <span className={`inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded ${s.changePercent >= 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
-                          {s.changePercent >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                          {s.changePercent >= 0 ? '+' : ''}{s.changePercent.toFixed(2)}%
+                        <span className={`inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded ${(s.changePercent || 0) >= 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                          {(s.changePercent || 0) >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                          {(s.changePercent || 0) >= 0 ? '+' : ''}{(s.changePercent || 0).toFixed(2)}%
                         </span>
                       </td>
-                      <td className="p-3 text-right text-xs text-slate-400 font-mono">{(s.volume / 1000000).toFixed(1)}M</td>
+                      <td className="p-3 text-right text-xs text-slate-400 font-mono">{((s.volume || 0) / 1000000).toFixed(1)}M</td>
                       <td className="p-3 text-right"><span className="text-blue-400 text-xs hover:text-blue-300">Trade</span></td>
                     </tr>
                   ))}
@@ -347,6 +374,7 @@ export default function PaperTrading() {
                   <th className="p-3 text-right">Total</th>
                   <th className="p-3 text-right">Fees</th>
                   <th className="p-3 text-right">P&L</th>
+                  <th className="p-3 text-center">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -372,6 +400,13 @@ export default function PaperTrading() {
                       <td className="p-3 text-right font-mono text-yellow-400">₹{(o.fees || 0).toFixed(2)}</td>
                       <td className={`p-3 text-right font-mono font-medium ${pnl !== null ? (pnl >= 0 ? 'text-green-400' : 'text-red-400') : 'text-slate-400'}`}>
                         {pnl !== null ? `${pnl >= 0 ? '+' : ''}₹${pnl.toFixed(2)}${pnlPercent !== null ? ` (${pnlPercent >= 0 ? '+' : ''}${pnlPercent.toFixed(1)}%)` : ''}` : '-'}
+                      </td>
+                      <td className="p-3 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <button onClick={() => { setSelectedStock(displayStocks.find((s:any) => s.symbol === o.symbol) || { symbol: o.symbol, price: o.filledPrice }); setActiveTab('trade'); }} className="text-xs bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 px-2 py-1 rounded transition-colors">
+                            Trade
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

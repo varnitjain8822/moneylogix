@@ -18,7 +18,55 @@ import {
   Award,
   History,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import api from '../../services/api';
+import { useMarketStore } from '../../stores/marketStore';
+
+function GlobalPnlWidget() {
+  const [paperSummary, setPaperSummary] = useState<any>(null);
+  const { stocks: livePrices } = useMarketStore();
+
+  useEffect(() => {
+    api.get('/paper/summary').then(res => {
+      setPaperSummary(res.data);
+    }).catch(() => {});
+  }, []);
+
+  const liveStats = useMemo(() => {
+    if (!paperSummary || !paperSummary.positions) return { totalPnl: 0, percent: 0 };
+    let currentPositionsValue = 0;
+    let totalInvested = 0;
+    
+    paperSummary.positions.forEach((p: any) => {
+      const currentPrice = livePrices[p.symbol]?.price || p.avgPrice || 0;
+      currentPositionsValue += currentPrice * p.quantity;
+      totalInvested += (p.avgPrice || 0) * p.quantity;
+    });
+    
+    const totalPnl = currentPositionsValue - totalInvested;
+    const percent = totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0;
+    return { totalPnl, percent };
+  }, [paperSummary, livePrices]);
+
+  if (!paperSummary || paperSummary.positions?.length === 0) return null;
+
+  return (
+    <div className="glass-card p-3 bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-white/5">
+      <div className="flex items-center gap-2 mb-1">
+        <Activity size={12} className={liveStats.totalPnl >= 0 ? "text-green-400" : "text-red-400"} />
+        <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Global P&L</span>
+      </div>
+      <div className="flex items-end justify-between">
+        <p className={`text-sm font-bold font-mono ${liveStats.totalPnl >= 0 ? "text-green-400" : "text-red-400"}`}>
+          {liveStats.totalPnl >= 0 ? '+' : ''}₹{liveStats.totalPnl.toFixed(0)}
+        </p>
+        <p className={`text-[10px] font-medium ${liveStats.totalPnl >= 0 ? "text-green-400/70" : "text-red-400/70"}`}>
+          {liveStats.totalPnl >= 0 ? '+' : ''}{liveStats.percent.toFixed(2)}%
+        </p>
+      </div>
+    </div>
+  );
+}
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -136,6 +184,13 @@ export default function Layout() {
             </button>
           )}
         </div>
+
+        {/* Global Live P&L */}
+        {!collapsed && (
+          <div className="px-4 pb-4 mt-auto">
+            <GlobalPnlWidget />
+          </div>
+        )}
       </aside>
 
       {/* Main Content */}

@@ -482,7 +482,11 @@ generate_stage() {
     cat "$output_dir"/*.md > "$context_file" 2>/dev/null || true
     
     # Generate content using LLM
-    python3 "$SCRIPT_DIR/llm_client.py" --action generate --stage "$stage_num" --context-file "$context_file" --component "${COMPONENT_NAME:-Main System}" > "$output_file"
+    if [ -n "$template_file" ]; then
+        python3 "$SCRIPT_DIR/llm_client.py" --action generate --stage "$stage_num" --context-file "$context_file" --template-file "$template_file" --component "${COMPONENT_NAME:-Main System}" > "$output_file"
+    else
+        python3 "$SCRIPT_DIR/llm_client.py" --action generate --stage "$stage_num" --context-file "$context_file" --component "${COMPONENT_NAME:-Main System}" > "$output_file"
+    fi
     
     case "$stage_num" in
         2) print_info "🧐 PRD Reviewer: Validating user stories, KPIs, and vision alignment..." ;;

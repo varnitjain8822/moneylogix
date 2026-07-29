@@ -65,9 +65,14 @@ def decompose_components(input_json):
         {"id": "auth-service", "name": "Auth Service", "description": "Handles users", "features": ["Login", "JWT"]}
     ]
 
-def generate_stage(stage_num, context, component_name):
+def generate_stage(stage_num, context, component_name, template_content=""):
     system_prompt = f"You are an Expert Tech Writer and Architect. You are writing Stage {stage_num} documentation for the '{component_name}' component. Output valid Markdown. DO NOT wrap in ```markdown blocks, just output the raw markdown."
-    user_prompt = f"Context from previous stages:\n{context}\n\nPlease generate the Stage {stage_num} document."
+    
+    user_prompt = f"Context from previous stages:\n{context}\n\n"
+    if template_content:
+        user_prompt += f"Please use the following template as a structural guide. Fill it in and enhance it based on the context:\n\n{template_content}\n\n"
+        
+    user_prompt += f"Please generate the Stage {stage_num} document."
     
     result = call_openai(system_prompt, user_prompt, max_tokens=2500)
     if result:
@@ -104,6 +109,7 @@ if __name__ == "__main__":
     parser.add_argument("--input", help="Input JSON file for decompose")
     parser.add_argument("--stage", help="Stage number")
     parser.add_argument("--context-file", help="File containing previous stage context")
+    parser.add_argument("--template-file", help="File containing the template to follow")
     parser.add_argument("--component", help="Component name")
     parser.add_argument("--content-file", help="File containing draft to evaluate")
     
@@ -120,7 +126,13 @@ if __name__ == "__main__":
         if args.context_file and os.path.exists(args.context_file):
             with open(args.context_file) as f:
                 context = f.read()
-        out = generate_stage(args.stage, context, args.component or "Main System")
+        
+        template_content = ""
+        if args.template_file and os.path.exists(args.template_file):
+            with open(args.template_file) as f:
+                template_content = f.read()
+                
+        out = generate_stage(args.stage, context, args.component or "Main System", template_content)
         print(out)
         
     elif args.action == "evaluate":

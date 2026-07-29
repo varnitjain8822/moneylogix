@@ -37,7 +37,11 @@ Instead of a simple linear document generator, this workflow uses a sophisticate
 ## Key Features
 
 - **Agentic Generation Loop**: Assigns specialized roles (Planner, Architect, Tech Writer) to generate each stage.
-- **AI Critic & Quality Gates**: Every stage receives a Quality Score (Completeness, Consistency, Tech Depth).
+- **Specialized Stage Reviewers**: 
+  - **PRD Reviewer**: Validates user stories, KPIs, and vision alignment.
+  - **HLD Reviewer**: Analyzes architecture, tech stack, and data flow.
+  - **LLD Reviewer**: Checks API specs, DB schemas, and state management.
+- **AI Critic & Quality Gates**: Every stage receives a Quality Score (Completeness, Consistency, Tech Depth) by the general AI Critic or the specialized reviewers.
 - **Memory Inheritance**: Tracks decisions from previous stages in a knowledge base to ensure consistency.
 - **Rich Human-in-the-Loop Menu**: Options to Continue, Regenerate, Edit Prompt, Compare, Go Back, Skip, or Exit.
 - **Checkpointing**: Exit anytime and resume your workflow exactly where you left off.

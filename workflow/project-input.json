@@ -1,41 +1,34 @@
 {
-  "projectName": "MoneyLogix",
+  "projectName": "My SaaS Application",
   "projectType": "Full-Stack Web Application",
-  "description": "AI-powered trading platform with real-time market data, paper trading, strategy backtesting, and multi-agent AI advisory system using emotional analysis.",
+  "description": "A comprehensive SaaS platform that allows users to manage their daily workflows and analytics.",
   "targetUsers": [
-    "Beginner traders learning the stock market",
-    "Intermediate traders wanting AI-powered insights",
-    "Paper traders practicing without real money"
+    "Small business owners",
+    "Enterprise teams",
+    "Freelancers"
   ],
   "techStack": {
-    "frontend": ["React 18", "TypeScript", "Vite", "TailwindCSS", "Recharts", "Zustand"],
-    "backend": ["Node.js", "Express", "TypeScript", "Prisma ORM", "PostgreSQL", "Socket.IO"],
-    "ai": ["Sarvam AI (Sarvam-30B)", "Multi-Agent System", "Emotional Analysis Engine"],
-    "devops": ["Docker", "WebSocket", "REST API"]
+    "frontend": ["React 18", "TypeScript", "Vite", "TailwindCSS"],
+    "backend": ["Node.js", "Express", "TypeScript", "PostgreSQL"],
+    "devops": ["Docker", "GitHub Actions", "AWS"]
   },
   "coreFeatures": [
-    "Real-time stock price tracking with WebSocket updates",
-    "AI-powered emotional trading advisor using Sarvam AI",
-    "Paper trading with virtual portfolio management",
-    "Strategy backtesting with historical data",
-    "Multi-agent system with 16 specialized agents and review loops",
-    "Technical analysis with 14 indicators (SMA, EMA, MACD, RSI, Bollinger, ATR, OBV, Stochastic, VWAP)",
-    "News aggregation and sentiment analysis",
-    "Portfolio health monitoring with Position Doctor",
-    "Risk profiling and strategy recommendations",
-    "User authentication and portfolio management"
+    "User authentication and authorization",
+    "Dashboard with data visualization",
+    "Task and workflow management",
+    "Real-time notifications",
+    "Billing and subscription management"
   ],
   "constraints": {
-    "timeline": "48 hours (hackathon)",
-    "teamSize": "1-2 developers",
-    "budget": "Free tier APIs and services",
-    "dataSources": "Simulated Indian stock market data"
+    "timeline": "3 months",
+    "teamSize": "3-5 developers",
+    "budget": "Standard cloud hosting"
   },
   "nonFunctionalRequirements": {
     "performance": "Page load < 2s, API response < 500ms",
-    "scalability": "Support 100 concurrent users",
-    "security": "JWT authentication, input validation, rate limiting",
-    "usability": "Responsive design, intuitive navigation, real-time feedback",
-    "availability": "99.9% uptime during demo"
+    "scalability": "Support 10,000 concurrent users",
+    "security": "JWT authentication, data encryption at rest",
+    "usability": "Responsive design, WCAG accessibility standards",
+    "availability": "99.9% uptime SLA"
   }
 }

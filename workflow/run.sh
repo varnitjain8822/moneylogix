@@ -380,7 +380,7 @@ if not components:
 
 print(json.dumps(components, indent=2))
 ")
-        echo "$result" > /tmp/moneylogix-components.json
+        echo "$result" > /tmp/workflow-components.json
         local comp_count=$(echo "$result" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))" 2>/dev/null || echo "0")
         if [ "$comp_count" -gt 0 ]; then
             print_success "AI detected $comp_count components from input"
@@ -401,7 +401,7 @@ print(json.dumps(components, indent=2))
     read -r -p "  Define components? (y/N): " define_comps </dev/tty
     if [[ "$define_comps" == "y" || "$define_comps" == "Y" ]]; then
         COMPONENT_MODE=true
-        echo "[]" > /tmp/moneylogix-components.json
+        echo "[]" > /tmp/workflow-components.json
         echo ""
         echo -e "  ${BOLD}Enter component names, one per line. Empty line to finish.${NC}"
         echo -e "  ${DIM}Examples: Backend API Module, Frontend UI, Database Layer, AI Module${NC}"
@@ -416,9 +416,9 @@ print(json.dumps(components, indent=2))
             comp_id=$(echo "$comp_name" | tr '[:upper:]' '[:lower:]' | sed 's/ /-/g' | sed 's/[^a-z0-9-]//g')
             python3 -c "
 import json
-comps = json.load(open('/tmp/moneylogix-components.json'))
+comps = json.load(open('/tmp/workflow-components.json'))
 comps.append({'id': '$comp_id', 'name': '$comp_name', 'description': '$comp_name component', 'features': []})
-json.dump(comps, open('/tmp/moneylogix-components.json', 'w'))
+json.dump(comps, open('/tmp/workflow-components.json', 'w'))
 " 2>/dev/null
         done
         print_success "Defined $i components manually"
@@ -855,8 +855,8 @@ main() {
             # Step 1: Decompose into components
             decompose_components "$INPUT_FILE"
 
-            if [ "$COMPONENT_MODE" = true ] && [ -f /tmp/moneylogix-components.json ]; then
-                local comp_count=$(python3 -c "import json; print(len(json.load(open('/tmp/moneylogix-components.json'))))" 2>/dev/null || echo "0")
+            if [ "$COMPONENT_MODE" = true ] && [ -f /tmp/workflow-components.json ]; then
+                local comp_count=$(python3 -c "import json; print(len(json.load(open('/tmp/workflow-components.json'))))" 2>/dev/null || echo "0")
                 print_success "Running workflow for $comp_count components"
                 echo ""
 
@@ -865,13 +865,13 @@ main() {
                 # Process each component
                 python3 -c "
 import json
-comps = json.load(open('/tmp/moneylogix-components.json'))
+comps = json.load(open('/tmp/workflow-components.json'))
 for comp in comps:
     print(comp['id'])
 " 2>/dev/null | while read comp_id; do
                     local comp_data=$(python3 -c "
 import json
-comps = json.load(open('/tmp/moneylogix-components.json'))
+comps = json.load(open('/tmp/workflow-components.json'))
 for c in comps:
     if c['id'] == '$comp_id':
         print(json.dumps(c))

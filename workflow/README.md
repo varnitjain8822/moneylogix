@@ -93,7 +93,7 @@ output/
 ├── 00-project-brief.md          # System overview (aggregated)
 ├── INDEX.md                     # Cross-component index
 ├── components/
-│   ├── auth-and-user-management/       # Complete SDLC docs for Auth
+│   ├── auth-service/                   # Complete SDLC docs for Auth
 │   │   ├── 00-project-brief.md
 │   │   ├── 01-requirement-analysis.md
 │   │   ├── 02-prd.md
@@ -102,13 +102,12 @@ output/
 │   │   ├── 05-implementation-plan.md
 │   │   ├── 06-code-implementation.md
 │   │   ├── 07-code-review.md
-│   │   └── 08-qa-testing.md
-│   ├── ai-ml-module/                   # SDLC docs for AI/ML
-│   ├── market-data-module/             # SDLC docs for Market Data
-│   ├── paper-trading-engine/           # SDLC docs for Paper Trading
-│   ├── portfolio-and-wallet/           # SDLC docs for Portfolio
-│   ├── real-time-services/             # SDLC docs for Real-time
-│   └── strategy-and-backtesting/       # SDLC docs for Strategy
+│   │   ├── 08-qa-testing.md
+│   │   └── 09-ui-ux-design.md
+│   ├── frontend-web/                   # SDLC docs for Frontend
+│   ├── backend-api/                    # SDLC docs for Backend API
+│   ├── database-layer/                 # SDLC docs for Database
+│   └── mobile-app/                     # SDLC docs for Mobile App
 ```
 
 ---

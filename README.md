@@ -57,11 +57,11 @@ A comprehensive trading platform with AI-powered features for the Indian stock m
 ## Tech Stack
 
 ### Backend
-- **Runtime**: Node.js with TypeScript
-- **Framework**: Express.js
-- **Database**: PostgreSQL with Prisma ORM
+- **Language**: Rust
+- **Framework**: Axum
+- **Database**: PostgreSQL with SQLx
 - **Cache**: Redis
-- **Real-time**: Socket.IO
+- **Real-time**: WebSockets (tokio-tungstenite)
 - **AI**: OpenAI GPT-4
 
 ### Frontend
@@ -75,7 +75,8 @@ A comprehensive trading platform with AI-powered features for the Indian stock m
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+
+- Rust & Cargo (latest stable)
+- Node.js 18+ (for frontend)
 - PostgreSQL
 - Redis (optional)
 
@@ -87,9 +88,11 @@ git clone <repository-url>
 cd moneylogix
 ```
 
-2. Install dependencies:
+2. Install frontend dependencies:
 ```bash
+cd packages/frontend
 npm install
+cd ../..
 ```
 
 3. Set up environment variables:
@@ -100,19 +103,27 @@ cp packages/backend/.env.example packages/backend/.env
 
 4. Set up the database:
 ```bash
-npm run db:generate
-npm run db:push
-npm run db:seed
+cd packages/backend
+cargo install sqlx-cli
+sqlx database create
+sqlx migrate run
+cd ../..
 ```
 
-5. Start the development server:
+5. Start the development servers:
 ```bash
+# Terminal 1: Backend (Rust)
+cd packages/backend
+cargo run
+
+# Terminal 2: Frontend (React)
+cd packages/frontend
 npm run dev
 ```
 
 The application will be available at:
 - Frontend: http://localhost:5173
-- Backend API: http://localhost:3001
+- Backend API: http://localhost:8080
 
 ### Demo Account
 - Email: demo@moneylogix.com
@@ -124,15 +135,14 @@ The application will be available at:
 moneylogix/
 ├── packages/
 │   ├── backend/
-│   │   ├── prisma/
-│   │   │   └── schema.prisma
+│   │   ├── Cargo.toml
+│   │   ├── migrations/
 │   │   └── src/
-│   │       ├── config/
-│   │       ├── middleware/
-│   │       ├── routes/
-│   │       ├── services/
-│   │       ├── websocket/
-│   │       └── index.ts
+│   │       ├── config.rs
+│   │       ├── handlers/
+│   │       ├── models/
+│   │       ├── routes.rs
+│   │       └── main.rs
 │   └── frontend/
 │       └── src/
 │           ├── components/

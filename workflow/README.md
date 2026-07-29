@@ -140,9 +140,9 @@ Each component gets **10 files** covering the full SDLC:
 |---|----------|---------|
 | 0 | Project Brief | Component overview, features, constraints |
 | 1 | Requirement Analysis | FR/NFR, personas, use cases, risks |
-| 2 | PRD | Vision, user stories, feature specs, KPIs |
-| 3 | High Level Design | Architecture, tech stack, data flow, security |
-| 4 | Low Level Design | API specs, DB schema, component tree, state mgmt |
+| 2 | PRD | Vision, user stories, feature specs, KPIs *(Includes automated post-creation PRD Review)* |
+| 3 | High Level Design | Architecture, tech stack, data flow, security *(Includes automated post-creation HLD Review)* |
+| 4 | Low Level Design | API specs, DB schema, component tree, state mgmt *(Includes automated post-creation LLD Review)* |
 | 5 | Implementation Plan | Sprints, milestones, tasks, resource allocation |
 | 6 | Code Implementation | Structure, setup, patterns, examples |
 | 7 | Code Review | Checklist, standards, quality gates |

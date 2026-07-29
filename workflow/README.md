@@ -43,7 +43,10 @@ Instead of a simple linear document generator, this workflow uses a sophisticate
   - **LLD Reviewer**: Checks API specs, DB schemas, and state management.
 - **AI Critic & Quality Gates**: Every stage receives a Quality Score (Completeness, Consistency, Tech Depth) by the general AI Critic or the specialized reviewers.
 - **Memory Inheritance**: Tracks decisions from previous stages in a knowledge base to ensure consistency.
-- **Rich Human-in-the-Loop Menu**: Options to Continue, Regenerate, Edit Prompt, Compare, Go Back, Skip, or Exit.
+- **Interactive Approval Workflow**: Immediately after each `.md` file is generated, the workflow pauses to let you:
+  - **Approve**: Accept the generated `.md` file and move to the next stage.
+  - **Suggest Changes**: Regenerate the draft or edit the prompt.
+  - **Navigate Stages**: Skip ahead or go backward to different stages.
 - **Checkpointing**: Exit anytime and resume your workflow exactly where you left off.
 
 **Total Output**: ~1.2MB across 73+ files (9 documents × 8+ components + INDEX).

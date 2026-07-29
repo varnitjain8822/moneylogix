@@ -44,7 +44,7 @@ Instead of a simple linear document generator, this workflow uses a sophisticate
   - **PRD Reviewer**: Validates user stories, KPIs, and vision alignment.
   - **HLD Reviewer**: Analyzes architecture, tech stack, and data flow.
   - **LLD Reviewer**: Checks API specs, DB schemas, and state management.
-- **Real AI Critic & Quality Gates**: Every stage is evaluated by a separate LLM prompt that returns a JSON payload with a strict Quality Score and actionable feedback.
+- **Real AI Critic & Auto-Correction**: Every stage is evaluated by a separate LLM prompt that acts as a Harsh QA Auditor. It returns a strict Quality Score and actionable feedback. If a draft is rejected (score < 8.5), the workflow automatically loops, feeds the feedback back to the Generator LLM, and forces it to fix the issues (up to 3 attempts).
 - **Interactive Approval Workflow**: Immediately after each `.md` file is generated, the workflow pauses to let you:
   - **Approve**: Accept the generated `.md` file and move to the next stage.
   - **Suggest Changes**: Regenerate the draft or edit the prompt.

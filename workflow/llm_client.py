@@ -65,12 +65,15 @@ def decompose_components(input_json):
         {"id": "auth-service", "name": "Auth Service", "description": "Handles users", "features": ["Login", "JWT"]}
     ]
 
-def generate_stage(stage_num, context, component_name, template_content=""):
+def generate_stage(stage_num, context, component_name, template_content="", feedback=""):
     system_prompt = f"You are an Expert Tech Writer and Architect. You are writing Stage {stage_num} documentation for the '{component_name}' component. Output valid Markdown. DO NOT wrap in ```markdown blocks, just output the raw markdown."
     
     user_prompt = f"Context from previous stages:\n{context}\n\n"
     if template_content:
         user_prompt += f"Please use the following template as a structural guide. Fill it in and enhance it based on the context:\n\n{template_content}\n\n"
+        
+    if feedback:
+        user_prompt += f"CRITICAL FEEDBACK FROM PREVIOUS DRAFT (MUST FIX):\n{feedback}\n\n"
         
     user_prompt += f"Please generate the Stage {stage_num} document."
     
@@ -82,7 +85,7 @@ def generate_stage(stage_num, context, component_name, template_content=""):
     return f"# Stage {stage_num} for {component_name}\n\nThis is a mock generated output because no OPENAI_API_KEY was found.\n\n### Context Included\nContext length provided: {len(context)} characters."
 
 def evaluate_document(stage_num, content):
-    system_prompt = "You are a Harsh QA Auditor. Review the provided documentation draft. Provide a JSON response with exactly two fields: 'score' (a float between 1.0 and 10.0) and 'feedback' (a short string). Only output JSON."
+    system_prompt = "You are a Harsh QA Auditor. Review the provided documentation draft. Provide a JSON response with exactly three fields: 'score' (a float between 1.0 and 10.0), 'feedback' (a short string specifying what needs fixing), and 'approved' (boolean, true only if score >= 8.5 and no major issues). Only output JSON."
     user_prompt = f"Review this Stage {stage_num} draft:\n\n{content}"
     
     result = call_openai(system_prompt, user_prompt, temperature=0.1)
@@ -93,14 +96,18 @@ def evaluate_document(stage_num, content):
             elif result.startswith("```"):
                 result = result.split("```")[1].split("```")[0].strip()
             data = json.loads(result)
-            return data.get("score", 8.5), data.get("feedback", "Looks okay.")
+            score = data.get("score", 8.5)
+            approved = data.get("approved", score >= 8.5)
+            return score, data.get("feedback", "Looks okay."), approved
         except:
             pass
             
     # Mock fallback
     import random
-    score = round(random.uniform(8.5, 9.9), 1)
-    return score, "Mock review: LGTM!"
+    score = round(random.uniform(8.0, 9.9), 1)
+    approved = score >= 8.5
+    feedback = "Mock review: LGTM!" if approved else "Mock review: Needs more detail."
+    return score, feedback, approved
 
 if __name__ == "__main__":
     import argparse
@@ -112,6 +119,7 @@ if __name__ == "__main__":
     parser.add_argument("--template-file", help="File containing the template to follow")
     parser.add_argument("--component", help="Component name")
     parser.add_argument("--content-file", help="File containing draft to evaluate")
+    parser.add_argument("--feedback", help="Feedback from previous run")
     
     args = parser.parse_args()
     
@@ -132,7 +140,7 @@ if __name__ == "__main__":
             with open(args.template_file) as f:
                 template_content = f.read()
                 
-        out = generate_stage(args.stage, context, args.component or "Main System", template_content)
+        out = generate_stage(args.stage, context, args.component or "Main System", template_content, args.feedback or "")
         print(out)
         
     elif args.action == "evaluate":
@@ -140,5 +148,5 @@ if __name__ == "__main__":
         if args.content_file and os.path.exists(args.content_file):
             with open(args.content_file) as f:
                 content = f.read()
-        score, feedback = evaluate_document(args.stage, content)
-        print(json.dumps({"score": score, "feedback": feedback}))
+        score, feedback, approved = evaluate_document(args.stage, content)
+        print(json.dumps({"score": score, "feedback": feedback, "approved": approved}))

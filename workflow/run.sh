@@ -481,31 +481,52 @@ generate_stage() {
     local context_file="/tmp/workflow_context.md"
     cat "$output_dir"/*.md > "$context_file" 2>/dev/null || true
     
-    # Generate content using LLM
-    if [ -n "$template_file" ]; then
-        python3 "$SCRIPT_DIR/llm_client.py" --action generate --stage "$stage_num" --context-file "$context_file" --template-file "$template_file" --component "${COMPONENT_NAME:-Main System}" > "$output_file"
-    else
-        python3 "$SCRIPT_DIR/llm_client.py" --action generate --stage "$stage_num" --context-file "$context_file" --component "${COMPONENT_NAME:-Main System}" > "$output_file"
-    fi
+    local max_attempts=3
+    local attempt=1
+    local feedback=""
+    local approved=false
     
-    case "$stage_num" in
-        2) print_info "🧐 PRD Reviewer: Validating user stories, KPIs, and vision alignment..." ;;
-        3) print_info "🧐 HLD Reviewer: Analyzing architecture, tech stack, and data flow..." ;;
-        4) print_info "🧐 LLD Reviewer: Checking API specs, DB schemas, and state management..." ;;
-        *) print_info "🧐 AI Critic: Self Review & QA Auditor running..." ;;
-    esac
-    sleep 0.4
-    
-    # Evaluate with LLM
-    local eval_result=$(python3 "$SCRIPT_DIR/llm_client.py" --action evaluate --stage "$stage_num" --content-file "$output_file")
-    local score=$(echo "$eval_result" | python3 -c "import sys,json; print(json.load(sys.stdin).get('score', 8.5))" 2>/dev/null || echo "8.5")
-    local feedback=$(echo "$eval_result" | python3 -c "import sys,json; print(json.load(sys.stdin).get('feedback', ''))" 2>/dev/null || echo "LGTM")
-    
-    echo "$score" > /tmp/last_score.txt
-    print_info "📊 Quality Score: $score/10"
-    if [ -n "$feedback" ]; then
-        print_info "💬 Feedback: $feedback"
-    fi
+    while [ $attempt -le $max_attempts ]; do
+        print_info "✍️ Generating Draft for Stage $stage_num (Attempt $attempt)..."
+        if [ -n "$feedback" ]; then
+            print_warn "Applying feedback: $feedback"
+        fi
+        
+        # Generate content using LLM
+        if [ -n "$template_file" ]; then
+            python3 "$SCRIPT_DIR/llm_client.py" --action generate --stage "$stage_num" --context-file "$context_file" --template-file "$template_file" --feedback "$feedback" --component "${COMPONENT_NAME:-Main System}" > "$output_file"
+        else
+            python3 "$SCRIPT_DIR/llm_client.py" --action generate --stage "$stage_num" --context-file "$context_file" --feedback "$feedback" --component "${COMPONENT_NAME:-Main System}" > "$output_file"
+        fi
+        
+        case "$stage_num" in
+            2) print_info "🧐 PRD Reviewer: Validating user stories, KPIs, and vision alignment..." ;;
+            3) print_info "🧐 HLD Reviewer: Analyzing architecture, tech stack, and data flow..." ;;
+            4) print_info "🧐 LLD Reviewer: Checking API specs, DB schemas, and state management..." ;;
+            *) print_info "🧐 AI Critic: Self Review & QA Auditor running..." ;;
+        esac
+        sleep 0.4
+        
+        # Evaluate with LLM
+        local eval_result=$(python3 "$SCRIPT_DIR/llm_client.py" --action evaluate --stage "$stage_num" --content-file "$output_file")
+        local score=$(echo "$eval_result" | python3 -c "import sys,json; print(json.load(sys.stdin).get('score', 8.5))" 2>/dev/null || echo "8.5")
+        feedback=$(echo "$eval_result" | python3 -c "import sys,json; print(json.load(sys.stdin).get('feedback', ''))" 2>/dev/null || echo "")
+        approved=$(echo "$eval_result" | python3 -c "import sys,json; print(json.load(sys.stdin).get('approved', True))" 2>/dev/null || echo "True")
+        
+        echo "$score" > /tmp/last_score.txt
+        print_info "📊 Quality Score: $score/10"
+        
+        if [ "$approved" = "True" ] || [ "$approved" = "true" ]; then
+            print_success "✅ Draft Approved!"
+            break
+        else
+            print_error "❌ Draft Rejected. Retrying..."
+            if [ -n "$feedback" ]; then
+                print_info "💬 Feedback: $feedback"
+            fi
+            attempt=$((attempt + 1))
+        fi
+    done
     
     print_info "✅ Cross-Component & Dependency Validation Passed."
     print_success "💾 Saved Markdown: $(basename "$output_file")"

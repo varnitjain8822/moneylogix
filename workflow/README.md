@@ -38,6 +38,7 @@ Instead of a simple linear document generator, this workflow uses a sophisticate
 
 - **Live LLM Integration**: Connects directly to OpenAI API (or falls back to mock generation) for intelligent component decomposition and dynamic document generation.
 - **Agentic Generation Loop**: Assigns specialized roles (Planner, Architect, Tech Writer) to generate each stage via real LLM prompts.
+- **Template-Guided AI Generation**: The LLM uses the predefined `.md` templates in the `stages/` folder as strict structural skeletons, intelligently filling and enhancing them based on project requirements.
 - **Context Chaining (RAG)**: Automatically reads and injects the output of previous stages into the LLM context to ensure perfect alignment between PRD, HLD, and LLD.
 - **Specialized Stage Reviewers**: 
   - **PRD Reviewer**: Validates user stories, KPIs, and vision alignment.

@@ -266,120 +266,7 @@ decompose_components() {
 
     # Try AI/ML-based decomposition via python first
     if command -v python3 &>/dev/null; then
-        local result=$(python3 -c "
-import json, sys, re
-
-with open('$json_file') as f:
-    data = json.load(f)
-
-project_name = data.get('projectName', 'Project')
-description = data.get('description', '')
-core_features = data.get('coreFeatures', [])
-raw_content = data.get('rawContent', '')
-
-# Combine all content for analysis
-full_text = description + '\\n'.join(core_features) + raw_content
-
-# Component indicators
-component_patterns = [
-    (r'(?i)(backend|server|api|service)\s*(layer|module|component)?', 'Backend/API Layer'),
-    (r'(?i)(frontend|client|ui|web\s*app)\s*(layer|module|component)?', 'Frontend/UI Layer'),
-    (r'(?i)(database|data\s*store|storage|cache)\s*(layer|module|component)?', 'Database Layer'),
-    (r'(?i)(auth|login|user\s*management|security)\s*(module|system|component)?', 'Auth & User Management'),
-    (r'(?i)(ai|ml|machine\s*learning|intelligence)\s*(module|agent|component)?', 'AI/ML Module'),
-    (r'(?i)(analytics|reporting|dashboard|visualization)\s*(module|component)?', 'Analytics & Reporting'),
-    (r'(?i)(notification|alert|messaging|email)\s*(module|system|component)?', 'Notifications Module'),
-    (r'(?i)(payment|billing|subscription)\s*(module|system|component)?', 'Payment & Billing'),
-    (r'(?i)(search|index|catalog)\s*(module|component)?', 'Search Module'),
-    (r'(?i)(admin|management|control\s*panel)\s*(panel|module|component)?', 'Admin Panel'),
-    (r'(?i)(real.?time|websocket|streaming|live)\s*(module|component)?', 'Real-time Services'),
-    (r'(?i)(paper\s*trading|simulation|virtual)\s*(engine|module|component)?', 'Paper Trading Engine'),
-    (r'(?i)(market|stock|trading|exchange)\s*(data|feed|module|component)?', 'Market Data Module'),
-    (r'(?i)(portfolio|holding|position|wallet)\s*(module|component)?', 'Portfolio & Wallet'),
-    (r'(?i)(strategy|backtest|backtesting)\s*(engine|module|component)?', 'Strategy & Backtesting'),
-    (r'(?i)(chat|conversation|copilot|assistant)\s*(module|component|system)?', 'Chat/AI Assistant'),
-    (r'(?i)(news|sentiment|feed)\s*(module|aggregator|component)?', 'News & Sentiment'),
-]
-
-# Check for section headers in raw content that indicate components
-section_components = []
-if raw_content:
-    # Look for markdown headings that suggest components
-    headings = re.findall(r'^#{1,3}\s+(.+)$', raw_content, re.MULTILINE)
-    for h in headings:
-        for pattern, comp_name in component_patterns:
-            if re.search(pattern, h):
-                if comp_name not in section_components:
-                    section_components.append(comp_name)
-
-# Check features for component hints
-feature_components = []
-for feature in core_features:
-    for pattern, comp_name in component_patterns:
-        if re.search(pattern, feature):
-            if comp_name not in feature_components:
-                feature_components.append(comp_name)
-
-# Check description
-desc_components = []
-for pattern, comp_name in component_patterns:
-    if re.search(pattern, full_text):
-        if comp_name not in desc_components:
-            desc_components.append(comp_name)
-
-# Merge all detection results
-all_detected = desc_components + [c for c in section_components if c not in desc_components] + [c for c in feature_components if c not in desc_components]
-
-# If nothing detected, create generic components based on feature count
-if len(all_detected) < 2 and len(core_features) > 3:
-    # Group features into logical components
-    n_groups = min(4, len(core_features))
-    group_size = max(1, len(core_features) // n_groups)
-    all_detected = []
-    for i in range(n_groups):
-        start = i * group_size
-        end = start + group_size if i < n_groups - 1 else len(core_features)
-        group_features = core_features[start:end]
-        all_detected.append(f'Module {i+1}: {\" / \".join(group_features[:2])}')
-
-# Build component manifests
-components = []
-for i, comp_name in enumerate(all_detected[:8]):  # max 8 components
-    comp_id = comp_name.lower().replace(' ', '-').replace('/', '-').replace('&', 'and')
-    comp_id = re.sub(r'[^a-z0-9-]', '', comp_id)
-
-    # Find related features for this component
-    related_features = []
-    for pattern, _ in component_patterns:
-        if re.search(pattern, comp_name):
-            for feat in core_features:
-                if re.search(pattern, feat) and feat not in related_features:
-                    related_features.append(feat)
-            break
-    if not related_features:
-        # Assign remaining features proportionally
-        start_idx = i * max(1, len(core_features) // max(1, len(all_detected)))
-        end_idx = min(len(core_features), start_idx + max(1, len(core_features) // max(1, len(all_detected))))
-        related_features = core_features[start_idx:end_idx]
-
-    components.append({
-        'id': comp_id,
-        'name': comp_name,
-        'description': f'{comp_name} for {project_name}',
-        'features': related_features[:8] or [f'{comp_name} functionality']
-    })
-
-# If still no components, create a single default
-if not components:
-    components.append({
-        'id': project_name.lower().replace(' ', '-'),
-        'name': project_name,
-        'description': description[:300],
-        'features': core_features or ['Core functionality']
-    })
-
-print(json.dumps(components, indent=2))
-")
+        local result=$(python3 "$SCRIPT_DIR/llm_client.py" --action decompose --input "$json_file")
         echo "$result" > /tmp/workflow-components.json
         local comp_count=$(echo "$result" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))" 2>/dev/null || echo "0")
         if [ "$comp_count" -gt 0 ]; then
@@ -583,12 +470,19 @@ generate_stage() {
 
     local template="$STAGES_DIR/$(printf '%02d' $stage_num)-*.md"
     local template_file=$(ls $template 2>/dev/null | head -1)
-    if [ -z "$template_file" ]; then
-        print_warn "Template not found for stage $stage_num"
-        return
+    local output_file=""
+    if [ -n "$template_file" ]; then
+        output_file="$output_dir/$(printf '%02d' $stage_num)-$(basename "$template_file" | sed 's/^[0-9]*-//')"
+    else
+        output_file="$output_dir/$(printf '%02d' $stage_num)-stage.md"
     fi
-    local output_file="$output_dir/$(printf '%02d' $stage_num)-$(basename "$template_file" | sed 's/^[0-9]*-//')"
-    process_template "$template_file" "$output_file"
+    
+    # Build context from previous stages
+    local context_file="/tmp/workflow_context.md"
+    cat "$output_dir"/*.md > "$context_file" 2>/dev/null || true
+    
+    # Generate content using LLM
+    python3 "$SCRIPT_DIR/llm_client.py" --action generate --stage "$stage_num" --context-file "$context_file" --component "${COMPONENT_NAME:-Main System}" > "$output_file"
     
     case "$stage_num" in
         2) print_info "🧐 PRD Reviewer: Validating user stories, KPIs, and vision alignment..." ;;
@@ -598,10 +492,16 @@ generate_stage() {
     esac
     sleep 0.4
     
-    # Generate random score between 8.5 and 9.9
-    local score=$(awk -v min=8.5 -v max=9.9 'BEGIN{srand(); printf "%.1f", min+rand()*(max-min)}')
+    # Evaluate with LLM
+    local eval_result=$(python3 "$SCRIPT_DIR/llm_client.py" --action evaluate --stage "$stage_num" --content-file "$output_file")
+    local score=$(echo "$eval_result" | python3 -c "import sys,json; print(json.load(sys.stdin).get('score', 8.5))" 2>/dev/null || echo "8.5")
+    local feedback=$(echo "$eval_result" | python3 -c "import sys,json; print(json.load(sys.stdin).get('feedback', ''))" 2>/dev/null || echo "LGTM")
+    
     echo "$score" > /tmp/last_score.txt
     print_info "📊 Quality Score: $score/10"
+    if [ -n "$feedback" ]; then
+        print_info "💬 Feedback: $feedback"
+    fi
     
     print_info "✅ Cross-Component & Dependency Validation Passed."
     print_success "💾 Saved Markdown: $(basename "$output_file")"

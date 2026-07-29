@@ -36,13 +36,14 @@ Instead of a simple linear document generator, this workflow uses a sophisticate
 
 ## Key Features
 
-- **Agentic Generation Loop**: Assigns specialized roles (Planner, Architect, Tech Writer) to generate each stage.
+- **Live LLM Integration**: Connects directly to OpenAI API (or falls back to mock generation) for intelligent component decomposition and dynamic document generation.
+- **Agentic Generation Loop**: Assigns specialized roles (Planner, Architect, Tech Writer) to generate each stage via real LLM prompts.
+- **Context Chaining (RAG)**: Automatically reads and injects the output of previous stages into the LLM context to ensure perfect alignment between PRD, HLD, and LLD.
 - **Specialized Stage Reviewers**: 
   - **PRD Reviewer**: Validates user stories, KPIs, and vision alignment.
   - **HLD Reviewer**: Analyzes architecture, tech stack, and data flow.
   - **LLD Reviewer**: Checks API specs, DB schemas, and state management.
-- **AI Critic & Quality Gates**: Every stage receives a Quality Score (Completeness, Consistency, Tech Depth) by the general AI Critic or the specialized reviewers.
-- **Memory Inheritance**: Tracks decisions from previous stages in a knowledge base to ensure consistency.
+- **Real AI Critic & Quality Gates**: Every stage is evaluated by a separate LLM prompt that returns a JSON payload with a strict Quality Score and actionable feedback.
 - **Interactive Approval Workflow**: Immediately after each `.md` file is generated, the workflow pauses to let you:
   - **Approve**: Accept the generated `.md` file and move to the next stage.
   - **Suggest Changes**: Regenerate the draft or edit the prompt.

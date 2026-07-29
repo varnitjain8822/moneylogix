@@ -5,7 +5,7 @@ A comprehensive trading platform with AI-powered features for the Indian stock m
 ## Features
 
 ### 1. Real-time Watchlist & Price Alerts
-- WebSocket-based live price streaming
+- WebSocket-based live price streaming (fetching real internet API data, no mocks)
 - Multiple watchlists with custom symbols
 - Configurable price/percentage alerts
 
@@ -62,6 +62,7 @@ A comprehensive trading platform with AI-powered features for the Indian stock m
 - **Database**: PostgreSQL with SQLx
 - **Cache**: Redis
 - **Real-time**: WebSockets (tokio-tungstenite)
+- **External Integrations**: Real live API calls over the internet (e.g., Finnhub) instead of mock data
 - **AI**: OpenAI GPT-4
 
 ### Frontend

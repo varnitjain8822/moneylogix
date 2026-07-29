@@ -5,7 +5,7 @@ A comprehensive trading platform with AI-powered features for the Indian stock m
 ## Features
 
 ### 1. Real-time Watchlist & Price Alerts
-- WebSocket-based live price streaming (fetching real internet API data, no mocks)
+- WebSocket-based live price streaming
 - Multiple watchlists with custom symbols
 - Configurable price/percentage alerts
 
@@ -57,12 +57,11 @@ A comprehensive trading platform with AI-powered features for the Indian stock m
 ## Tech Stack
 
 ### Backend
-- **Language**: Rust
-- **Framework**: Axum
-- **Database**: PostgreSQL with SQLx
+- **Runtime**: Node.js with TypeScript
+- **Framework**: Express.js
+- **Database**: PostgreSQL with Prisma ORM
 - **Cache**: Redis
-- **Real-time**: WebSockets (tokio-tungstenite)
-- **External Integrations**: Real live API calls over the internet (e.g., Finnhub) instead of mock data
+- **Real-time**: Socket.IO
 - **AI**: OpenAI GPT-4
 
 ### Frontend
@@ -76,8 +75,7 @@ A comprehensive trading platform with AI-powered features for the Indian stock m
 ## Getting Started
 
 ### Prerequisites
-- Rust & Cargo (latest stable)
-- Node.js 18+ (for frontend)
+- Node.js 18+
 - PostgreSQL
 - Redis (optional)
 
@@ -89,11 +87,9 @@ git clone <repository-url>
 cd moneylogix
 ```
 
-2. Install frontend dependencies:
+2. Install dependencies:
 ```bash
-cd packages/frontend
 npm install
-cd ../..
 ```
 
 3. Set up environment variables:
@@ -104,27 +100,19 @@ cp packages/backend/.env.example packages/backend/.env
 
 4. Set up the database:
 ```bash
-cd packages/backend
-cargo install sqlx-cli
-sqlx database create
-sqlx migrate run
-cd ../..
+npm run db:generate
+npm run db:push
+npm run db:seed
 ```
 
-5. Start the development servers:
+5. Start the development server:
 ```bash
-# Terminal 1: Backend (Rust)
-cd packages/backend
-cargo run
-
-# Terminal 2: Frontend (React)
-cd packages/frontend
 npm run dev
 ```
 
 The application will be available at:
 - Frontend: http://localhost:5173
-- Backend API: http://localhost:8080
+- Backend API: http://localhost:3001
 
 ### Demo Account
 - Email: demo@moneylogix.com
@@ -136,14 +124,15 @@ The application will be available at:
 moneylogix/
 ├── packages/
 │   ├── backend/
-│   │   ├── Cargo.toml
-│   │   ├── migrations/
+│   │   ├── prisma/
+│   │   │   └── schema.prisma
 │   │   └── src/
-│   │       ├── config.rs
-│   │       ├── handlers/
-│   │       ├── models/
-│   │       ├── routes.rs
-│   │       └── main.rs
+│   │       ├── config/
+│   │       ├── middleware/
+│   │       ├── routes/
+│   │       ├── services/
+│   │       ├── websocket/
+│   │       └── index.ts
 │   └── frontend/
 │       └── src/
 │           ├── components/

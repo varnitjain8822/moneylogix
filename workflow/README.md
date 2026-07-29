@@ -1,31 +1,46 @@
-# Project Development Workflow v2
+# Agentic SDLC Project Development Workflow v3
 
-A **multi-component SDLC documentation generator** that takes project descriptions (JSON, PDF, or plain text), **decomposes them into logical components**, and generates complete **PRD, HLD, LLD, and 5 other stage documents for every component**.
+A **multi-agent SDLC orchestration system** that takes project descriptions (JSON, PDF, or plain text), **decomposes them into logical components**, and generates complete **PRD, HLD, LLD, and 5 other stage documents** using an autonomous agentic loop per component. It features iterative refinement, QA gates, dependency validation, memory inheritance, and checkpointing.
 
 ---
 
 ## What This Workflow Does
 
+Instead of a simple linear document generator, this workflow uses a sophisticated agentic loop:
+
 ```text
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                        PROJECT WORKFLOW PIPELINE                        │
+│                        AGENTIC WORKFLOW PIPELINE                        │
 │                                                                         │
 │  ┌──────────┐   ┌──────────────┐   ┌─────────────────────────┐         │
 │  │  INPUT   │──▶│  DECOMPOSE   │──▶│  PER-COMPONENT STAGES   │         │
 │  │ JSON/PDF │   │  (AI/Heuristic) │  ┌─────────────────────┐│         │
-│  │ TXT      │   │  → Component A │  │  Component-A/       ││         │
-│  └──────────┘   │  → Component B │  │  ├── 00-brief.md     ││         │
-│                 │  → Component C │  │  ├── 01-req.md       ││         │
-│                 │  → Component D │  │  ├── 02-prd.md       ││         │
-│                 └──────────────┘   │  ├── 03-hld.md       ││         │
-│                                    │  ├── 04-lld.md       ││         │
-│                                    │  ├── 05-plan.md      ││         │
-│                                    │  ├── 06-code.md      ││         │
-│                                    │  ├── 07-review.md    ││         │
-│                                    │  └── 08-qa.md        ││         │
+│  │ TXT      │   │  → Component A │  │  Load Context       ││         │
+│  └──────────┘   │  → Component B │  │        ↓            ││         │
+│                 │                │  │  Generate Draft     ││         │
+│                 └──────────────┘   │        ↓            ││         │
+│                                    │  AI Critic Review    ││         │
+│                                    │        ↓            ││         │
+│                                    │  Quality Score      ││         │
+│                                    │        ↓            ││         │
+│                                    │  Validate & Save     ││         │
+│                                    │        ↓            ││         │
+│                                    │  Human Approval      ││         │
+│                                    │        ↓            ││         │
+│                                    │  Next Stage          ││         │
 │                                    └─────────────────────┘│         │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Key Features
+
+- **Agentic Generation Loop**: Assigns specialized roles (Planner, Architect, Tech Writer) to generate each stage.
+- **AI Critic & Quality Gates**: Every stage receives a Quality Score (Completeness, Consistency, Tech Depth).
+- **Memory Inheritance**: Tracks decisions from previous stages in a knowledge base to ensure consistency.
+- **Rich Human-in-the-Loop Menu**: Options to Continue, Regenerate, Edit Prompt, Compare, Go Back, Skip, or Exit.
+- **Checkpointing**: Exit anytime and resume your workflow exactly where you left off.
 
 **Total Output**: ~1.2MB across 73+ files (9 documents × 8+ components + INDEX).
 

@@ -9,14 +9,15 @@
   ],
   "techStack": {
     "frontend": ["React 18", "TypeScript", "Vite", "TailwindCSS"],
-    "backend": ["Node.js", "Express", "TypeScript", "PostgreSQL"],
+    "backend": ["Rust", "Axum", "SQLx", "PostgreSQL"],
     "devops": ["Docker", "GitHub Actions", "AWS"]
   },
   "coreFeatures": [
     "User authentication and authorization",
     "Dashboard with data visualization",
     "Task and workflow management",
-    "Real-time notifications",
+    "Real-time notifications using WebSockets",
+    "Integration with real third-party internet APIs (no mock data)",
     "Billing and subscription management"
   ],
   "constraints": {

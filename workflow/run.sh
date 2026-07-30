@@ -598,8 +598,8 @@ generate_all_stages() {
 
             # NEW: Extract code from Stage 06 automatically upon approval!
             if [ "$i" -eq 6 ]; then
-                print_info "🔨 Extracting executable code files..."
-                python3 "$SCRIPT_DIR/extract_code.py" "$file_to_review" "$output_dir/code"
+                print_info "🔨 Extracting executable code files to your current directory..."
+                python3 "$SCRIPT_DIR/extract_code.py" "$file_to_review" "$PWD"
             fi
 
             # User wants to go forward

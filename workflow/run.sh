@@ -18,7 +18,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INPUT_FILE="$SCRIPT_DIR/project-input.json"
 STAGES_DIR="$SCRIPT_DIR/stages"
 OUTPUT_DIR="$SCRIPT_DIR/output"
-INTERACTIVE=true
+INTERACTIVE=false
+VERBOSE=false
+CHECKPOINT_FILE="$OUTPUT_DIR/checkpoint.json"
 COMPONENT_MODE=false
 
 # ============================================================================

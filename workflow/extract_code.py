@@ -17,6 +17,11 @@ def extract_code(markdown_path, output_base):
     pattern = r'```[\w-]*\n(?:[/#]+\s*([a-zA-Z0-9_\-\./]+)\n)?(.*?)```'
     blocks = re.findall(pattern, content, re.DOTALL)
     
+    suspicious_patterns = [
+        'curl ', 'wget ', 'eval(', 'exec(', 'os.system', 'subprocess.Popen',
+        'rm -rf', 'chmod +x', 'base64_decode', '__import__'
+    ]
+    
     extracted_count = 0
     for filepath, code in blocks:
         if filepath and filepath.strip():
@@ -30,6 +35,20 @@ def extract_code(markdown_path, output_base):
                 continue
                 
             full_path = os.path.join(output_base, filepath)
+            
+            # Security Scan
+            is_suspicious = False
+            for sp in suspicious_patterns:
+                if sp in code:
+                    print(f"\n⚠️ SECURITY ALERT: Suspicious pattern '{sp}' detected in {filepath}")
+                    is_suspicious = True
+            
+            if is_suspicious:
+                choice = input(f"Do you want to allow writing this potentially vulnerable file? [y/N]: ")
+                if choice.lower() != 'y':
+                    print(f"  [-] Skipped {filepath}")
+                    continue
+                    
             os.makedirs(os.path.dirname(full_path), exist_ok=True)
             
             with open(full_path, 'w', encoding='utf-8') as out:

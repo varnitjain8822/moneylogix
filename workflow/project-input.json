@@ -1,35 +1,36 @@
 {
-  "projectName": "My SaaS Application",
-  "projectType": "Full-Stack Web Application",
-  "description": "A comprehensive SaaS platform that allows users to manage their daily workflows and analytics.",
+  "projectName": "Requirements",
+  "projectType": "Software Application",
+  "description": "A Real-time Watchlist & Price Alerts Engine\nBuild: WebSocket-based live price streaming with user-defined watchlists and configurable price / percentage alerts delivered via push and email.\nKey features:\nCreate / reorder / delete multiple watchlists\nLive tick updates with up/down colour flashing\nAlert rules: above/below price, % move, 52-week high/low\nNotification delivery + alert history log\nStretch: Indicator-based alerts (e.g. \"RSI crosses 70\"); throttling & de-duplication.\nSkills tested: Rea",
+  "rawContent": "A Real-time Watchlist & Price Alerts Engine\nBuild: WebSocket-based live price streaming with user-defined watchlists and configurable price / percentage alerts delivered via push and email.\nKey features:\nCreate / reorder / delete multiple watchlists\nLive tick updates with up/down colour flashing\nAlert rules: above/below price, % move, 52-week high/low\nNotification delivery + alert history log\nStretch: Indicator-based alerts (e.g. \"RSI crosses 70\"); throttling & de-duplication.\nSkills tested: Real-time systems, WebSockets, event-driven design, state management.\nProduction leverage: The alerting service becomes a standalone reusable microservice; watchlists are a day-one retention feature.\n",
   "targetUsers": [
-    "Small business owners",
-    "Enterprise teams",
-    "Freelancers"
+    "End Users"
   ],
   "techStack": {
-    "frontend": ["React 18", "TypeScript", "Vite", "TailwindCSS"],
-    "backend": ["Rust", "Axum", "SQLx", "PostgreSQL"],
-    "devops": ["Docker", "GitHub Actions", "AWS"]
+    "backend": [
+      "Rust",
+      "Actix-web"
+    ],
+    "database": [
+      "PostgreSQL"
+    ]
   },
   "coreFeatures": [
-    "User authentication and authorization",
-    "Dashboard with data visualization",
-    "Task and workflow management",
-    "Real-time notifications using WebSockets",
-    "Integration with real third-party internet APIs (no mock data)",
-    "Billing and subscription management"
+    "A Real-time Watchlist & Price Alerts Engine",
+    "Build: WebSocket-based live price streaming with user-defined watchlists and configurable price / percentage alerts delivered via push and email",
+    "Create / reorder / delete multiple watchlists",
+    "Live tick updates with up/down colour flashing",
+    "Alert rules: above/below price, % move, 52-week high/low",
+    "Notification delivery + alert history log",
+    "Stretch: Indicator-based alerts (e",
+    "\"RSI crosses 70\"); throttling & de-duplication"
   ],
   "constraints": {
-    "timeline": "3 months",
-    "teamSize": "3-5 developers",
-    "budget": "Standard cloud hosting"
+    "timeline": "To be determined",
+    "teamSize": "To be determined",
+    "budget": "To be determined"
   },
   "nonFunctionalRequirements": {
-    "performance": "Page load < 2s, API response < 500ms",
-    "scalability": "Support 10,000 concurrent users",
-    "security": "JWT authentication, data encryption at rest",
-    "usability": "Responsive design, WCAG accessibility standards",
-    "availability": "99.9% uptime SLA"
+    "performance": "See requirement analysis"
   }
 }

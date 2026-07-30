@@ -73,7 +73,7 @@ wait_for_user() {
             echo ""
             echo -e "1 Continue"
             echo -e "2 Regenerate"
-            echo -e "3 Edit Prompt"
+            echo -e "3 Provide Feedback & Regenerate"
             echo -e "4 Open Markdown"
             echo -e "5 Compare Versions"
             echo -e "6 Go Back"
@@ -84,7 +84,12 @@ wait_for_user() {
             case "$user_input" in
                 1) return 0 ;;
                 2) return 2 ;;
-                3) print_warn "Edit prompt feature coming soon." ;;
+                3) 
+                    echo ""
+                    read -r -p "Enter feedback for regeneration: " USER_FEEDBACK </dev/tty
+                    export USER_FEEDBACK
+                    return 3 
+                    ;;
                 4) cat "$file_path" | head -n 20; echo "..." ;;
                 5) print_warn "Compare versions feature coming soon." ;;
                 6) return 1 ;;
@@ -483,7 +488,8 @@ generate_stage() {
     
     local max_attempts=3
     local attempt=1
-    local feedback=""
+    local feedback="${USER_FEEDBACK:-}"
+    USER_FEEDBACK=""
     local approved=false
     
     while [ $attempt -le $max_attempts ]; do
@@ -580,12 +586,21 @@ generate_all_stages() {
         elif [ "$user_choice" -eq 2 ]; then
             # Regenerate stage
             print_info "Regenerating stage $i..."
+        elif [ "$user_choice" -eq 3 ]; then
+            # Regenerate with feedback
+            print_info "Regenerating stage $i with user feedback..."
         else
             # Save checkpoint state
             echo "{\"component\": \"$component_label\", \"stage\": $i, \"completed\": true}" > "$output_dir/../workflow/output/checkpoint.json"
             
             # Update knowledge base
             print_info "📚 Updating knowledge base with decisions from Stage $i..."
+
+            # NEW: Extract code from Stage 06 automatically upon approval!
+            if [ "$i" -eq 6 ]; then
+                print_info "🔨 Extracting executable code files..."
+                python3 "$SCRIPT_DIR/extract_code.py" "$file_to_review" "$output_dir/code"
+            fi
 
             # User wants to go forward
             i=$((i+1))

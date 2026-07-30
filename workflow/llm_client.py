@@ -85,7 +85,7 @@ def generate_stage(stage_num, context, component_name, template_content="", feed
     return f"# Stage {stage_num} for {component_name}\n\nThis is a mock generated output because no OPENAI_API_KEY was found.\n\n### Context Included\nContext length provided: {len(context)} characters."
 
 def evaluate_document(stage_num, content):
-    system_prompt = "You are a Harsh QA Auditor. Review the provided documentation draft. Provide a JSON response with exactly three fields: 'score' (a float between 1.0 and 10.0), 'feedback' (a short string specifying what needs fixing), and 'approved' (boolean, true only if score >= 8.5 and no major issues). Only output JSON."
+    system_prompt = "You are a Hyper-Critical QA Auditor enforcing rigorous loop engineering. Review the provided documentation draft. You MUST find flaws to force iterative refinement unless the draft is absolutely perfect. Provide a JSON response with exactly three fields: 'score' (a float between 1.0 and 10.0), 'feedback' (a detailed string specifying EXACTLY what must be fixed to reach a 9.0+), and 'approved' (boolean, true ONLY if score >= 9.0 and there are absolutely zero architectural or detail flaws). Only output JSON."
     user_prompt = f"Review this Stage {stage_num} draft:\n\n{content}"
     
     result = call_openai(system_prompt, user_prompt, temperature=0.1)
@@ -97,7 +97,7 @@ def evaluate_document(stage_num, content):
                 result = result.split("```")[1].split("```")[0].strip()
             data = json.loads(result)
             score = data.get("score", 8.5)
-            approved = data.get("approved", score >= 8.5)
+            approved = data.get("approved", score >= 9.0)
             return score, data.get("feedback", "Looks okay."), approved
         except:
             pass
@@ -105,8 +105,8 @@ def evaluate_document(stage_num, content):
     # Mock fallback
     import random
     score = round(random.uniform(8.0, 9.9), 1)
-    approved = score >= 8.5
-    feedback = "Mock review: LGTM!" if approved else "Mock review: Needs more detail."
+    approved = score >= 9.0
+    feedback = "Mock review: LGTM!" if approved else "Mock review: Needs more detail and rigorous refinement to meet the 9.0 threshold."
     return score, feedback, approved
 
 if __name__ == "__main__":

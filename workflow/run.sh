@@ -486,7 +486,7 @@ generate_stage() {
     local context_file="/tmp/workflow_context.md"
     cat "$output_dir"/*.md > "$context_file" 2>/dev/null || true
     
-    local max_attempts=3
+    local max_attempts=5
     local attempt=1
     local feedback="${USER_FEEDBACK:-}"
     USER_FEEDBACK=""
